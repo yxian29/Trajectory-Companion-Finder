@@ -12,6 +12,7 @@ public class TCPoint extends Point2D implements Serializable{
 
     public TCPoint(int id, double x, double y, int timestamp)
     {
+        _objectId = id;
         _x = x;
         _y = y;
         _timestamp = timestamp;

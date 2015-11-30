@@ -1,12 +1,17 @@
 package driver;
 
 import geometry.TCPoint;
-import partition.PartitionMapToSlot;
+import geometry.TCRegion;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.VoidFunction;
+import partition.SubPartitionMapper;
+import partition.TrajectorySlotMapper;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple3;
 
 public class TCFinder
 {
@@ -14,22 +19,26 @@ public class TCFinder
     private static int densityThreshold = 3;
     private static int timeInterval = 50;
     private static int lifetime = 3;
-    private static int numSubPartitions = 3;
+    private static int numSubPartitions = 1;
 
     public static void main( String[] args )
     {
     	SparkConf sparkConf = new SparkConf().
                 setAppName("SparkTrajectoryCompanions").
-                setMaster("local[2]");
+                setMaster("local[1]");
 
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile("hdfs://localhost:9000/data/Trajectories1.txt");
 
-        // partition the entire data set into trajectory slots,
-        // key: slot id
-        // value: list of points belong to the slot
+        // Stage1: partition the entire data set into trajectory slots
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
-        file.mapToPair(new PartitionMapToSlot(timeInterval)).groupByKey().cache();
+            file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey().sortByKey();
+
+        // Stage2: partition each slot into sub partition
+        JavaRDD<Tuple3<Integer, Integer, TCRegion>> subPartitionsRDD =
+            slotsRDD.flatMap(new SubPartitionMapper(numSubPartitions, distanceThreshold));
+
+
 
         ctx.stop();
     }

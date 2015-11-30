@@ -5,11 +5,11 @@ import org.apache.spark.api.java.function.PairFunction;
 import java.io.Serializable;
 import scala.Tuple2;
 
-public class PartitionMapToSlot implements PairFunction<String, Integer, TCPoint>, Serializable {
+public class TrajectorySlotMapper implements PairFunction<String, Integer, TCPoint>, Serializable {
 
     private int _slotInterval = 0;
 
-    public PartitionMapToSlot(int slotInterval)
+    public TrajectorySlotMapper(int slotInterval)
     {
         _slotInterval = slotInterval;
     }
