@@ -35,7 +35,7 @@ public class TCFinder
             slotsRDD.flatMap(new SubPartitionMapper(numSubPartitions, distanceThreshold));
 
         // find coverage density connection in each sub partition
-        subPartitionsRDD.map(new coverageDensityConnectionMapper());
+        subPartitionsRDD.map(new CoverageDensityConnectionMapper());
 
         ctx.stop();
     }

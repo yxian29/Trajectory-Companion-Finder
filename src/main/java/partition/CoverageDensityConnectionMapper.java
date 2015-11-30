@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 
-public class coverageDensityConnectionMapper implements Function<Tuple3<Integer,Integer,TCRegion>, Object> {
+public class CoverageDensityConnectionMapper implements Function<Tuple3<Integer,Integer,TCRegion>, Object> {
 
     private double _distanceThreshold = 0.0;
 
-    public coverageDensityConnectionMapper(double distanceThreshold)
+    public CoverageDensityConnectionMapper(double distanceThreshold)
     {
         _distanceThreshold = distanceThreshold;
     }
