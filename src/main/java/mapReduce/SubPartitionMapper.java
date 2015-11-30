@@ -1,13 +1,8 @@
-package partition;
+package mapReduce;
 
-import geometry.TCLine;
 import geometry.TCPoint;
 import geometry.TCRegion;
-import org.apache.commons.collections.IteratorUtils;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 import scala.Tuple3;
 

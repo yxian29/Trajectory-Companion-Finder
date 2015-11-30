@@ -2,25 +2,32 @@ package geometry;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class TCPolyline implements Serializable {
 
+    private int _objectId;
     private List<TCPoint> _points = new ArrayList<>();
+
+    public TCPolyline(int objectId)
+    {
+        _objectId = objectId;
+    }
+
+    public int getObjectId() { return _objectId; }
 
     public List<TCPoint> getPoints()
     {
         return _points;
     }
 
-    public void AddPoint(TCPoint point)
+    public void addPoint(TCPoint point)
     {
         if(!_points.contains(point))
             _points.add(point);
     }
 
-    public List<TCLine> getAsLines()
+    public List<TCLine> getAsLineSegements()
     {
         List<TCLine> lines = new ArrayList<>();
         _points.sort((o1, o2) -> o1.compareTo(o2) );

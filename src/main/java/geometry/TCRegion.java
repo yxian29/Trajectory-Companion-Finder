@@ -26,12 +26,12 @@ public class TCRegion implements Serializable {
 
         if (_polylines.containsKey(point.getObjectId()))
         {
-            _polylines.get(point.getObjectId()).AddPoint(point);
+            _polylines.get(point.getObjectId()).addPoint(point);
         }
         else
         {
-            TCPolyline pl = new TCPolyline();
-            pl.AddPoint(point);
+            TCPolyline pl = new TCPolyline(point.getObjectId());
+            pl.addPoint(point);
             _polylines.put(point.getObjectId(), pl);
         }
     }

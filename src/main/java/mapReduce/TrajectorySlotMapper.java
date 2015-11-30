@@ -1,4 +1,4 @@
-package partition;
+package mapReduce;
 
 import geometry.TCPoint;
 import org.apache.spark.api.java.function.PairFunction;
