@@ -37,4 +37,10 @@ public class TCPoint extends Point2D implements Serializable{
         _x = x;
         _y = y;
     }
+
+    public int compareTo(TCPoint comparePoint)
+    {
+        return this._timestamp - comparePoint.getTimeStamp();
+    }
+
 }

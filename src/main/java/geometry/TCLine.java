@@ -27,4 +27,5 @@ public class TCLine {
     {
         return (_p2.getY() - _p1.getY()) / (_p2.getX() - _p1.getX());
     }
+
 }
