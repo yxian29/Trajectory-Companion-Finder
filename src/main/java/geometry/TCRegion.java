@@ -1,8 +1,5 @@
 package geometry;
 
-import geometry.TCPoint;
-import geometry.TCPolyline;
-
 import java.io.Serializable;
 import java.util.*;
 

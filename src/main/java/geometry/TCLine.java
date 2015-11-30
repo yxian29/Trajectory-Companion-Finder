@@ -1,8 +1,5 @@
 package geometry;
 
-/**
- * Created by osboxes on 29/11/15.
- */
 public class TCLine {
 
     private TCPoint _p1, _p2;

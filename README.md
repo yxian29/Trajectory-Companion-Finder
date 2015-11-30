@@ -1,1 +1,1 @@
-# Trajectory-Companions
+# Trajectory Companion Finder
