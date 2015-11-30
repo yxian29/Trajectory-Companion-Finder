@@ -1,11 +1,7 @@
 package driver;
 
-import geometry.TCPoint;
-import geometry.TCRegion;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.VoidFunction;
-import partition.SubPartitionMapper;
-import partition.TrajectorySlotMapper;
+import geometry.*;
+import partition.*;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -38,8 +34,11 @@ public class TCFinder
         JavaRDD<Tuple3<Integer, Integer, TCRegion>> subPartitionsRDD =
             slotsRDD.flatMap(new SubPartitionMapper(numSubPartitions, distanceThreshold));
 
-
+        // find coverage density connection in each sub partition
+        subPartitionsRDD.map(new CoverageDensityConnectionMapper());
 
         ctx.stop();
     }
+
+
 }
