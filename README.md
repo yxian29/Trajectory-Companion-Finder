@@ -32,6 +32,17 @@ $ mvn package
 ```
 $ spark-submit --class driver.TCFinder --master local[2] TCFinder-0.0.1-SNAPSHOT.jar
 ```
+Arguments
+```
+-e <arg>   distance threshold
+-h         show help
+-i <arg>   input file
+-k <arg>   life time
+-n <arg>   number of sub-partitions
+-o <arg>   output directory
+-T <arg>   time interval of a trajectory slot
+-u <arg>   density threshold
+```
 ## Expected Output
 The outputs are trajectory companions in the format
 ``
