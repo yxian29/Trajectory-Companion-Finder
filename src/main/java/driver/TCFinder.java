@@ -69,7 +69,9 @@ public class TCFinder
 
         System.out.println(String.format(
                 "%s result(s) found. Display first 10th results", resultRDD.count()));
-        resultRDD.take(10).forEach((r)-> System.out.println(r.toString()) );
+        for (Tuple2<String, Iterable<Integer>> result : resultRDD.take(10)) {
+            System.out.println(result.toString());
+        }
 
         if(outputDir != "") {
             System.out.println(String.format("Saving result to %s", outputDir));

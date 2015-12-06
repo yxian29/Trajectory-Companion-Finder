@@ -1,7 +1,10 @@
 package geometry;
 
+import comparator.TCPointComparator;
+
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TCPolyline implements Serializable {
@@ -30,7 +33,8 @@ public class TCPolyline implements Serializable {
     public List<TCLine> getAsLineSegements()
     {
         List<TCLine> lines = new ArrayList<>();
-        _points.sort((o1, o2) -> o1.compareTo(o2) );
+        Collections.sort(_points, new TCPointComparator());
+
         for(int i = 0; i < _points.size() - 1; ++i)
         {
             TCLine line = new TCLine(_points.get(i),_points.get(i+1));
