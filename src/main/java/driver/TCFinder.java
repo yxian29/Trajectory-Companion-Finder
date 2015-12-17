@@ -24,6 +24,7 @@ public class TCFinder
     private static int timeInterval = 50;
     private static int lifetime = 5;
     private static int numSubPartitions = 1;
+    private static boolean debugMode = false;
 
     public static void main( String[] args )
     {
@@ -37,13 +38,14 @@ public class TCFinder
 
     	SparkConf sparkConf = new SparkConf().
                 setAppName("TrajectoryCompanionFinder");
+        if(debugMode) sparkConf.setMaster("local");
 
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile(inputFilePath);
 
         // partition the entire data set into trajectory slots
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
-            file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey().sortByKey();
+            file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
 
         // partition each slot into sub partition
         JavaRDD<Tuple3<Integer, Integer, TCRegion>> subPartitionsRDD =
@@ -53,8 +55,7 @@ public class TCFinder
         // merge coverage density connection per slot
         JavaPairRDD<Integer, List<Tuple2<Integer, Integer>>> densityConnectionRDD =
                 subPartitionsRDD.mapToPair(new CoverageDensityConnectionMapper(densityThreshold))
-                        .reduceByKey(new CoverageDensityConnectionReducer())
-                        .sortByKey();
+                        .reduceByKey(new CoverageDensityConnectionReducer());
 
         // invert indexes base on the density connection found. such that
         // the key is the accompanied object pair; the value is the slot id
@@ -67,16 +68,8 @@ public class TCFinder
         JavaPairRDD<String, Iterable<Integer>> resultRDD =
                 TCMapRDD.filter(new TrajectoryCompanionFilter(lifetime));
 
-        System.out.println(String.format(
-                "%s result(s) found. Display first 10th results", resultRDD.count()));
-        for (Tuple2<String, Iterable<Integer>> result : resultRDD.take(10)) {
-            System.out.println(result.toString());
-        }
-
-        if(outputDir != "") {
-            System.out.println(String.format("Saving result to %s", outputDir));
-            resultRDD.saveAsTextFile(outputDir);
-        }
+        System.out.println(String.format("Saving result to %s", outputDir));
+        resultRDD.saveAsTextFile(outputDir);
 
         ctx.stop();
     }
@@ -94,6 +87,19 @@ public class TCFinder
             } else {
                 System.err.println("Input file not defined. Aborting...");
                 parser.help();
+            }
+
+            // output
+            if (cmd.hasOption(Cli.OPT_STR_OUTPUTDIR)) {
+                outputDir = cmd.getOptionValue(Cli.OPT_STR_OUTPUTDIR);
+            } else {
+                System.err.println("Output directory not defined. Aborting...");
+                parser.help();
+            }
+
+            if (cmd.hasOption(Cli.OPT_STR_DEBUG)) {
+                debugMode = true;
+                System.out.println("Enter debug mode. master forces to be local");
             }
 
             // distance threshold

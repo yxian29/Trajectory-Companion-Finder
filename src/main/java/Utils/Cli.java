@@ -9,6 +9,8 @@ import java.util.logging.Logger;
 public class Cli {
 
     public static final String OPT_STR_HELP = "h";
+    public static final String OPT_STR_HELP_ALT = "help";
+    public static final String OPT_STR_DEBUG = "debug";
     public static final String OPT_STR_INPUTFILE = "i";
     public static final String OPT_STR_OUTPUTDIR = "o";
     public static final String OPT_STR_DISTTHRESHOLD = "e";
@@ -28,6 +30,8 @@ public class Cli {
         this.args = args;
 
         options.addOption(OPT_STR_HELP, false, "show help");
+        options.addOption(OPT_STR_HELP_ALT, false, "show help");
+        options.addOption(OPT_STR_DEBUG, false, "debug mode. (force local mode)");
         options.addOption(OPT_STR_INPUTFILE, true, "input file");
         options.addOption(OPT_STR_OUTPUTDIR, true, "output directory");
         options.addOption(OPT_STR_DISTTHRESHOLD, true, "distance threshold" );
@@ -47,7 +51,7 @@ public class Cli {
         {
             cmd = parser.parse(options, args);
 
-            if(cmd.hasOption(OPT_STR_HELP))
+            if(cmd.hasOption(OPT_STR_HELP) || cmd.hasOption(OPT_STR_HELP_ALT))
                 help();
 
         }
