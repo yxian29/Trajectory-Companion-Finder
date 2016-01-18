@@ -84,7 +84,7 @@ public class SubPartitionMapper implements
                 return i;
             }
             lowerBound = upperBound - _epsilon;
-            upperBound = min + i * length + _epsilon;
+            upperBound = min + (i + 1) * length + _epsilon;
         }
         return -1;
     }

@@ -49,7 +49,7 @@ public class CoverageDensityConnectionMapper implements
 
                 for(TCLine line : lines)
                 {
-                    double dist = MathUtil.DistanceHelper.distanceFromPointToLine(
+                    double dist = MathUtil.distance(
                             point, line);
 
                     if(dist < _distanceThreshold)

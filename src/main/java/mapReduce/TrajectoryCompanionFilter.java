@@ -19,7 +19,7 @@ public class TrajectoryCompanionFilter implements Function<Tuple2<String, Iterab
     public Boolean call(Tuple2<String, Iterable<Integer>> t) throws Exception {
 
         List<Integer> slotArray = IteratorUtils.toList(t._2().iterator());
-        int result = MathUtil.MaxContiguousSubArrayFinder.getMaxContiguousSubArray(slotArray);
+        int result = MathUtil.maxSubarray(slotArray);
         return result >= _numContinousSlots;
     }
 }
