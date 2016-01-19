@@ -3,25 +3,27 @@ package Utils;
 import geometry.TCLine;
 import geometry.TCPoint;
 
-import java.util.List;
+import java.util.Arrays;
 
 public class MathUtil {
 
     /**
      * given a line based on two points, and a point away from the line,
      * find the perpendicular distance from the point to the line.
-     * see http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
+     * see http://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
      * for explanation and definition.
      * @param point given point
      * @param line given line
      * @return distance between a point to line
      */
     public static double distance(TCPoint point, TCLine line) {
-        TCPoint l1 = line.getPoint1();
-        TCPoint l2 = line.getPoint2();
+        TCPoint p0 = point;
+        TCPoint p1 = line.getPoint1();
+        TCPoint p2 = line.getPoint2();
 
-        return Math.abs((l2.getX() - l1.getX())*(l1.getY() - point.getY()) - (l1.getX() - point.getX())*(l2.getY() - l1.getY()))/
-                Math.sqrt(Math.pow(l2.getX() - l1.getX(), 2) + Math.pow(l2.getY() - l1.getY(), 2));
+        return Math.abs(p1.getY() - p1.getY() * p0.getX() -
+                (p2.getX() - p1.getX()) * p0.getY() + p2.getX()*p1.getY() - p2.getY()*p1.getX())/
+                Math.sqrt(Math.pow(p2.getY() - p1.getY(), 2) + Math.pow(p2.getX() - p1.getX(), 2));
     }
 
     /**
@@ -29,20 +31,24 @@ public class MathUtil {
      * @param values an array of values
      * @return The number of subarray
      */
-    public static int maxSubarray(List<Integer> values) {
+    public static int maxSubarray(int[] values) {
+
+        // make sure the array is sorted
+        Arrays.sort(values);
+
         int maxLen = 1;
-        for(int i = 0; i < values.size() - 1; i++)
+        for(int i = 0; i < values.length - 1; i++)
         {
             // initialize min and max for all sub-arrays starting with i
-            int min = values.get(i);
-            int max = values.get(i);
+            int min = values[i];
+            int max = values[i];
 
             // consider all sub-arrays starting with i and ending with j
-            for(int j = i + 1; j < values.size(); j++)
+            for(int j = i + 1; j < values.length; j++)
             {
                 // update min and max in this sub-array if needed
-                min = Math.min(min, values.get(j));
-                max = Math.max(max, values.get(j));
+                min = Math.min(min, values[j]);
+                max = Math.max(max, values[j]);
 
                 // If current sub-array has all contiguous elements
                 if ((max - min) == j - i)
@@ -50,22 +56,6 @@ public class MathUtil {
             }
         }
         return maxLen;
-    }
-
-    /**
-     * Calculate the maximum subarray in a given array using Kadane's algorithm
-     * https://en.wikipedia.org/wiki/Maximum_subarray_problem
-     * @param values an array of values
-     * @return The number of subarray
-     */
-    public static int maxSubarray1(int[] values) {
-        int max_end = 0;
-        int max_cur = 0;
-        for(int x : values) {
-            max_end = Math.max(x, max_end + x);
-            max_cur = Math.max(max_cur, max_end);
-        }
-        return max_cur;
     }
 
     /**
