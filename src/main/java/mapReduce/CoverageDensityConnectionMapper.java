@@ -7,7 +7,6 @@ import geometry.TCPolyline;
 import geometry.TCRegion;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,7 @@ import java.util.Map;
 
 
 public class CoverageDensityConnectionMapper implements
-        PairFunction<Tuple3<Integer,Integer,TCRegion>,
+        PairFunction<Tuple2<Integer,TCRegion>,
                         Integer, List<Tuple2<Integer, Integer>>> {
 
     private double _distanceThreshold = 0.0;
@@ -26,11 +25,11 @@ public class CoverageDensityConnectionMapper implements
     }
 
     @Override
-    public Tuple2<Integer, List<Tuple2<Integer, Integer>>> call(Tuple3<Integer, Integer, TCRegion> v1) throws Exception {
+    public Tuple2<Integer, List<Tuple2<Integer, Integer>>> call(Tuple2<Integer, TCRegion> v1) throws Exception {
 
         List<Tuple2<Integer, Integer>> list = new ArrayList<>();
 
-        TCRegion region = v1._3();
+        TCRegion region = v1._2();
         Map<Integer, TCPoint> points = region.getPoints();
         Map<Integer, TCPolyline> polylines = region.getPolylines();
 

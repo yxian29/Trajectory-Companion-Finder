@@ -11,7 +11,6 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.util.List;
 
@@ -48,8 +47,10 @@ public class TCFinder
             file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
 
         // partition each slot into sub partition
-        JavaRDD<Tuple3<Integer, Integer, TCRegion>> subPartitionsRDD =
-            slotsRDD.flatMap(new SubPartitionMapper(numSubPartitions, distanceThreshold));
+        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
+            slotsRDD.flatMap(new UniformSubPartitionMapper(numSubPartitions, distanceThreshold));
+//        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
+//                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
 
         // find coverage density connection in each sub partition
         // merge coverage density connection per slot

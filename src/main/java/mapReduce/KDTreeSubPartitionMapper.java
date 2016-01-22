@@ -1,59 +1,53 @@
 package mapReduce;
 
-import Utils.MathUtil;
+import data.KDNode;
+import data.KDTree;
 import geometry.TCPoint;
 import geometry.TCRegion;
 import org.apache.commons.collections.IteratorUtils;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.math.util.MathUtils;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class KDTreeSubPartitionMapper implements
-        FlatMapFunction<Tuple2<Integer,Iterable<TCPoint>>, Tuple3<Integer, Integer, TCRegion>>,
+        FlatMapFunction<Tuple2<Integer,Iterable<TCPoint>>, Tuple2<Integer, TCRegion>>,
         Serializable
 {
     private int _numSubPartitions = 1;
-    private double _epsilon = 0.0;
 
-    public KDTreeSubPartitionMapper(int numSubpartition, double epsilon)
+    public KDTreeSubPartitionMapper(int numSubpartition)
     {
         _numSubPartitions = numSubpartition;
-        _epsilon = epsilon;
     }
 
     @Override
-    public Iterable<Tuple3<Integer, Integer, TCRegion>> call(Tuple2<Integer, Iterable<TCPoint>> slot) throws Exception {
+    public Iterable<Tuple2<Integer, TCRegion>> call(Tuple2<Integer, Iterable<TCPoint>> slot) throws Exception {
 
-        List<Tuple3<Integer, Integer, TCRegion>> regions = new ArrayList<>(_numSubPartitions);
+        List<Tuple2<Integer, TCRegion>> regions = new ArrayList<>();
 
-        int m = 1;
-        while(m < _numSubPartitions)
+        KDTree kdTree = new KDTree(_numSubPartitions);
+        kdTree.buildTree(IteratorUtils.toList(slot._2().iterator()));
+
+        if(!kdTree.isEmpty())
         {
-            double varX = getVariance(slot._2(), true);
-            double varY = getVariance(slot._2(), false);
-            //to-do
-            m += 1;
+            int id = 1;
+            int slotId = slot._1();
+            List<KDNode> leafNodes = kdTree.getAllLeafNodes();
+            for(KDNode node : leafNodes)
+            {
+                TCRegion region = new TCRegion(id, slotId);
+                for (TCPoint point : node.getPoints())
+                {
+                    region.addPoint(point);
+                }
+                regions.add(new Tuple2<>(id, region));
+                id++;
+            }
         }
 
         return regions;
-    }
-
-    public double getVariance(Iterable<TCPoint> points, boolean coordinateX)
-    {
-        List<Double> values = new ArrayList<>();
-        for(TCPoint p : points) {
-            if(coordinateX)
-                values.add(p.getX());
-            else
-                values.add(p.getY());
-        }
-        Double[] ds = values.toArray(new Double[values.size()]);
-        return MathUtil.variance(ArrayUtils.toPrimitive(ds));
     }
 }

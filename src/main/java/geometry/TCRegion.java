@@ -18,7 +18,7 @@ public class TCRegion implements Serializable {
         _sid = sid;
     }
 
-    public void AddPoint(TCPoint point) {
+    public void addPoint(TCPoint point) {
         _points.put(point.getObjectId(), point);
 
         if (_polylines.containsKey(point.getObjectId()))
