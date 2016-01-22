@@ -4,7 +4,6 @@ import geometry.TCPoint;
 import geometry.TCRegion;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.io.Serializable;
 import java.util.ArrayList;

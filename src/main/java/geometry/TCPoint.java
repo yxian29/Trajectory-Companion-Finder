@@ -28,9 +28,7 @@ public class TCPoint extends Point2D implements Serializable{
     }
 
     @Override
-    public double getY() {
-        return _x;
-    }
+    public double getY() { return _y; }
 
     @Override
     public void setLocation(double x, double y) {
