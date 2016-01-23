@@ -1,6 +1,7 @@
 package data;
 
 import geometry.TCPoint;
+import geometry.TCRegion;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
@@ -44,7 +45,8 @@ public class KDTreeTest extends TestCase {
         KDTree myTree = new KDTree(4);
         myTree.buildTree(points);
         if(!myTree.isEmpty()) {
-
+            List<KDNode> nodes = myTree.getAllLeafNodes();
+            Assert.assertEquals(4, nodes.size());
         }
     }
 }

@@ -5,9 +5,12 @@ import geometry.TCPoint;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.math.stat.descriptive.moment.Variance;
 import org.apache.commons.math.stat.descriptive.rank.Median;
+import org.apache.commons.math3.util.Precision;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 public class KDTree {
 
@@ -25,71 +28,85 @@ public class KDTree {
     public void buildTree(List<TCPoint> points)
     {
         _root = new KDNode();
-        buildTree(_root, points);
+        _root.addPoints(points);
+        breathFirstBuildTree(points);
     }
 
-    private void buildTree(KDNode node, List<TCPoint> points)
+    private void breathFirstBuildTree(List<TCPoint> points)
     {
-        if(getLeafNodeCount(_root) > _maxNumOfLeaf)
-            return;
+        Queue<KDNode> queue = new LinkedList<KDNode>();
+        queue.add(_root);
 
-        // compute the variance in each dimension
-        Variance variance = new Variance();
-        Median median = new Median();
-        Coordinate2D coordinate;
-        double varX, varY, med;
-        double[] xs = toArray(points, Coordinate2D.XAxis);
-        double[] ys = toArray(points, Coordinate2D.YAxis);
+        while(getLeafNodeCount(_root) < _maxNumOfLeaf) {
 
-        varX = variance.evaluate(xs);
-        varY = variance.evaluate(ys);
+            KDNode node = queue.remove();
+            List<TCPoint> curPoints = node.getPoints();
 
-        // pick up the middle value in the dimension with larger variance
-        if(varX > varY)
-        {
-            coordinate = Coordinate2D.XAxis;
-            med = median.evaluate(xs);
-        }
-        else
-        {
-            coordinate = Coordinate2D.YAxis;
-            med = median.evaluate(ys);
-        }
+            if(curPoints.size() == 1)
+                continue;
 
-        List<TCPoint> less = new ArrayList<>();
-        List<TCPoint> greater = new ArrayList<>();
-        for(TCPoint p : points)
-        {
-            if(coordinate == Coordinate2D.XAxis)
-            {
-                if(p.getX() < med)
-                    less.add(p);
-                else
-                    greater.add(p);
+            // compute the variance in each dimension
+            Variance variance = new Variance();
+            Median median = new Median();
+            Coordinate2D coordinate;
+            double varX, varY, med;
+            double[] xs = toArray(curPoints, Coordinate2D.XAxis);
+            double[] ys = toArray(curPoints, Coordinate2D.YAxis);
+
+            varX = variance.evaluate(xs);
+            varY = variance.evaluate(ys);
+
+            // pick up the middle value in the dimension with larger variance
+            if (varX > varY) {
+                coordinate = Coordinate2D.XAxis;
+                med = median.evaluate(xs);
+            } else {
+                coordinate = Coordinate2D.YAxis;
+                med = median.evaluate(ys);
             }
-            else
-            {
-                if(p.getY() < med)
-                    less.add(p);
-                else
-                    greater.add(p);
+
+            List<TCPoint> less = new ArrayList<>();
+            List<TCPoint> greater = new ArrayList<>();
+            for (TCPoint p : curPoints) {
+                if (coordinate == Coordinate2D.XAxis) {
+                    // add to both lists if a point is near the border
+                    if(p.getX() >= med - Precision.EPSILON && p.getX() <= med + Precision.EPSILON)
+                    {
+                        less.add(p);
+                        greater.add(p);
+                    }
+                    else if (p.getX() < med - Precision.EPSILON)
+                        less.add(p);
+                    else
+                        greater.add(p);
+                } else {
+                    if(p.getY() >= med - Precision.EPSILON &&
+                            p.getY() <= med + Precision.EPSILON) {
+                        less.add(p);
+                        greater.add(p);
+                    }
+                    else if (p.getY() < med - Precision.EPSILON) {
+                        less.add(p);
+                    }
+                    else {
+                        greater.add(p);
+                    }
+                }
             }
+
+            KDNode left = new KDNode();
+            left.addPoints(less);
+            queue.add(left);
+
+            KDNode right = new KDNode();
+            right.addPoints(greater);
+            queue.add(right);
+
+            node._splitValue = med;
+            node._splitCoordinate = coordinate;
+            node.setLeftNode(left);
+            node.setRightNode(right);
         }
-
-        KDNode left = new KDNode();
-        left.addPoints(less);
-
-        KDNode right = new KDNode();
-        right.addPoints(greater);
-
-        node._splitValue = med;
-        node._splitCoordinate = coordinate;
-        node.setLeftNode(left);
-        node.setRightNode(right);
-
-        // recursively build tree
-        buildTree(left, less);
-        buildTree(right, greater);
     }
 
     public List<KDNode> getAllLeafNodes()
