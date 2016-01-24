@@ -3,10 +3,9 @@ package data;
 import geometry.Coordinate2D;
 import geometry.TCPoint;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.math.stat.descriptive.moment.Variance;
-import org.apache.commons.math.stat.descriptive.rank.Median;
 import org.apache.commons.math3.util.Precision;
-
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,6 +37,9 @@ public class KDTree {
         queue.add(_root);
 
         while(getLeafNodeCount(_root) < _maxNumOfLeaf) {
+
+            if(queue.isEmpty())
+                return;
 
             KDNode node = queue.remove();
             List<TCPoint> curPoints = node.getPoints();

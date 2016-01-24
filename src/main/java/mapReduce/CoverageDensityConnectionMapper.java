@@ -8,6 +8,7 @@ import geometry.TCRegion;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
+import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,8 +49,10 @@ public class CoverageDensityConnectionMapper implements
 
                 for(TCLine line : lines)
                 {
-                    double dist = MathUtil.distance(
-                            point, line);
+                    Line2D line2D = new Line2D.Double();
+                    line2D.setLine(line.getPoint1().getX(), line.getPoint1().getY(),
+                            line.getPoint2().getX(), line.getPoint2().getY());
+                    double dist = line2D.ptLineDist(point);
 
                     if(dist < _distanceThreshold)
                     {

@@ -1,6 +1,8 @@
 package geometry;
 
-public class TCLine {
+import java.io.Serializable;
+
+public class TCLine implements Serializable {
 
     private TCPoint _p1, _p2;
 

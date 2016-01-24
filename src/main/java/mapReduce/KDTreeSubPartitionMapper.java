@@ -27,14 +27,13 @@ public class KDTreeSubPartitionMapper implements
     public Iterable<Tuple2<Integer, TCRegion>> call(Tuple2<Integer, Iterable<TCPoint>> slot) throws Exception {
 
         List<Tuple2<Integer, TCRegion>> regions = new ArrayList<>();
-
+        int slotId = slot._1();
         KDTree kdTree = new KDTree(_numSubPartitions);
         kdTree.buildTree(IteratorUtils.toList(slot._2().iterator()));
 
         if(!kdTree.isEmpty())
         {
             int id = 1;
-            int slotId = slot._1();
             List<KDNode> leafNodes = kdTree.getAllLeafNodes();
             for(KDNode node : leafNodes)
             {
@@ -43,7 +42,7 @@ public class KDTreeSubPartitionMapper implements
                 {
                     region.addPoint(point);
                 }
-                regions.add(new Tuple2<>(id, region));
+                regions.add(new Tuple2<>(slotId, region));
                 id++;
             }
         }
