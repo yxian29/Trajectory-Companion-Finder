@@ -3,6 +3,15 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 
+#input format
+#<object id>
+#lat, lon, timestamp(integer)
+#
+#for example,
+#O1
+#0,39.984688,116.318385,20
+#0,39.984563,116.317517,40
+
 if(@ARGV < 2) {
 	die "usage ParseFile [input] [output]";
 }
