@@ -1,7 +1,6 @@
 package driver;
 
 import Utils.Cli;
-import mapReduce.CoverageDensityConnectionReducer;
 import geometry.*;
 import mapReduce.*;
 
@@ -18,11 +17,11 @@ public class TCFinder
 {
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.00005;
+    private static double distanceThreshold = 0.0001;
     private static int densityThreshold = 3;
     private static int timeInterval = 50;
-    private static int lifetime = 5;
-    private static int numSubPartitions = 1;
+    private static int durationThreshold = 3;
+    private static int numSubPartitions = 2;
     private static boolean debugMode = false;
 
     public static void main( String[] args )
@@ -37,18 +36,18 @@ public class TCFinder
 
     	SparkConf sparkConf = new SparkConf().
                 setAppName("TrajectoryCompanionFinder");
-        if(debugMode) sparkConf.setMaster("local");
+
+        // force to local mode if it is debug
+        if(debugMode) sparkConf.setMaster("local[*]");
 
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath);
+        JavaRDD<String> file = ctx.textFile(inputFilePath, 100);
 
         // partition the entire data set into trajectory slots
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
             file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
 
         // partition each slot into sub partition
-//        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
-//            slotsRDD.flatMap(new UniformSubPartitionMapper(numSubPartitions, distanceThreshold));
         JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
                 slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
 
@@ -67,17 +66,19 @@ public class TCFinder
 
         // find continuous trajectory companions
         JavaPairRDD<String, Iterable<Integer>> resultRDD =
-                TCMapRDD.filter(new TrajectoryCompanionFilter(lifetime));
+                TCMapRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
 
         System.out.println(String.format("Saving result to %s", outputDir));
-        resultRDD.saveAsTextFile(outputDir);
+        //resultRDD.saveAsTextFile(outputDir);
+        resultRDD.take(1);
 
         ctx.stop();
     }
 
     private static void initParams(Cli parser)
     {
-        String notFoundStr = "param -%s not found. Use default value: %s";
+        String foundStr = Cli.ANSI_GREEN + "param -%s is set. Use custom value: %s" + Cli.ANSI_RESET;
+        String notFoundStr = Cli.ANSI_RED + "param -%s not found. Use default value: %s" + Cli.ANSI_RESET;
         CommandLine cmd = parser.getCmd();
 
         try {
@@ -98,6 +99,7 @@ public class TCFinder
                 parser.help();
             }
 
+            // debug
             if (cmd.hasOption(Cli.OPT_STR_DEBUG)) {
                 debugMode = true;
                 System.out.println("Enter debug mode. master forces to be local");
@@ -106,14 +108,18 @@ public class TCFinder
             // distance threshold
             if (cmd.hasOption(Cli.OPT_STR_DISTTHRESHOLD)) {
                 distanceThreshold = Double.parseDouble(cmd.getOptionValue(Cli.OPT_STR_DISTTHRESHOLD));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
                         Cli.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             }
 
             // density threshold
-            if (cmd.hasOption(Cli.OPT_STR_DISTTHRESHOLD)) {
+            if (cmd.hasOption(Cli.OPT_STR_DENTHRESHOLD)) {
                 densityThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_DENTHRESHOLD));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_DENTHRESHOLD, densityThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
                         Cli.OPT_STR_DENTHRESHOLD, densityThreshold));
@@ -122,6 +128,8 @@ public class TCFinder
             // time interval
             if (cmd.hasOption(Cli.OPT_STR_TIMEINTERVAL)) {
                 timeInterval = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_TIMEINTERVAL));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_TIMEINTERVAL, timeInterval));
             } else {
                 System.out.println(String.format(notFoundStr,
                         Cli.OPT_STR_TIMEINTERVAL, timeInterval));
@@ -129,15 +137,19 @@ public class TCFinder
 
             // life time
             if (cmd.hasOption(Cli.OPT_STR_LIFETIME)) {
-                lifetime = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_LIFETIME));
+                durationThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_LIFETIME));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_LIFETIME, durationThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_LIFETIME, lifetime));
+                        Cli.OPT_STR_LIFETIME, durationThreshold));
             }
 
             // number of  sub-partitions
             if (cmd.hasOption(Cli.OPT_STR_NUMPART)) {
                 numSubPartitions = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_NUMPART));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_NUMPART, numSubPartitions));
             } else {
                 System.out.println(String.format(notFoundStr,
                         Cli.OPT_STR_NUMPART, numSubPartitions));

@@ -13,13 +13,13 @@ import java.util.List;
 import java.util.Map;
 
 
-public class CoverageDensityConnectionMapper implements
+public class CoverageMapper implements
         PairFunction<Tuple2<Integer,TCRegion>,
-                        Integer, List<Tuple2<Integer, Integer>>> {
+                Integer, List<Tuple2<Integer, Integer>>> {
 
     private double _distanceThreshold = 0.0;
 
-    public CoverageDensityConnectionMapper(double distanceThreshold)
+    public CoverageMapper(double distanceThreshold)
     {
         _distanceThreshold = distanceThreshold;
     }

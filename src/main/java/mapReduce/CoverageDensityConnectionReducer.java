@@ -12,11 +12,7 @@ public class CoverageDensityConnectionReducer implements Function2<
         List<Tuple2<Integer, Integer>>> {
     @Override
     public List<Tuple2<Integer, Integer>> call(List<Tuple2<Integer, Integer>> t1, List<Tuple2<Integer, Integer>> t2) throws Exception {
-        List<Tuple2<Integer, Integer>> mergeList = new ArrayList<>();
-
-        mergeList.addAll(t1);
-        mergeList.addAll(t2);
-
-        return mergeList;
+        t1.addAll(t2);
+        return t1;
     }
 }
