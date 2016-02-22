@@ -9,19 +9,19 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-
-import java.util.List;
 
 public class TCFinder
 {
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.0001;
+    private static double distanceThreshold = 0.00005;
     private static int densityThreshold = 3;
     private static int timeInterval = 50;
     private static int durationThreshold = 3;
     private static int numSubPartitions = 2;
+    private static int sizeThreshold = 3;
     private static boolean debugMode = false;
 
     public static void main( String[] args )
@@ -41,32 +41,41 @@ public class TCFinder
         if(debugMode) sparkConf.setMaster("local[*]");
 
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath, 100);
+        JavaRDD<String> file = ctx.textFile(inputFilePath);
 
         // partition the entire data set into trajectory slots
+        // format: <slot_id, { pi, pj,... }>
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
             file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
 
-        // partition each slot into sub partition
+        // partition each slot into sub-partitions
+        // format: <slot_id, TCRegion>
         JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
                 slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
 
-        // find coverage density connection in each sub partition
-        // merge coverage density connection per slot
-        JavaPairRDD<Integer, List<Tuple2<Integer, Integer>>> densityConnectionRDD =
-                subPartitionsRDD.mapToPair(new CoverageDensityConnectionMapper(densityThreshold))
-                        .reduceByKey(new CoverageDensityConnectionReducer());
+        // find objects that are coverage density reachable from each
+        // format: <(sid, rid, oid), {Oi,Oj,...}>
+        JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
+                subPartitionsRDD.flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
+                .groupByKey()
+                .filter(new CoverageDensityReachableFilter(densityThreshold));
+
+        // find coverage density connection in each sub-partition
+        // format: <(sid, rid), {Oi, Oj, ...}>
+        JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD =
+                densityReachableRDD.flatMapToPair(new CoverageDensityConnectionMapper())
+                .reduceByKey(new CoverageDensityConnectionReducer())
+                .filter(new CoverageDensityConnectionFilter(sizeThreshold));
 
         // invert indexes base on the density connection found. such that
-        // the key is the accompanied object pair; the value is the slot id
-        JavaPairRDD<String, Integer> densityConnectionInvertedIndexRDD = densityConnectionRDD.
-                flatMapToPair(new CoverageDensityConnectionInvertedIndexer()).distinct();
-        JavaPairRDD<String, Iterable<Integer>> TCMapRDD
-                = densityConnectionInvertedIndexRDD.groupByKey();
+        // the key is the accompanied objects; the value is the slot id
+        JavaPairRDD<String, Iterable<Integer>> densityConnectionInvertedIndexRDD = densityConnectionRDD.
+                mapToPair(new CoverageDensityConnectionInvertedIndexer())
+                .groupByKey();
 
         // find continuous trajectory companions
         JavaPairRDD<String, Iterable<Integer>> resultRDD =
-                TCMapRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
+                densityConnectionInvertedIndexRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
 
         System.out.println(String.format("Saving result to %s", outputDir));
         //resultRDD.saveAsTextFile(outputDir);
@@ -153,6 +162,17 @@ public class TCFinder
             } else {
                 System.out.println(String.format(notFoundStr,
                         Cli.OPT_STR_NUMPART, numSubPartitions));
+            }
+
+            // size threshold
+            if (cmd.hasOption(Cli.OPT_STR_SIZETHRESHOLD)) {
+                sizeThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_SIZETHRESHOLD));
+                System.out.println(String.format(foundStr,
+                        Cli.OPT_STR_SIZETHRESHOLD, sizeThreshold));
+            }
+            else {
+                System.out.println(String.format(notFoundStr,
+                        Cli.OPT_STR_SIZETHRESHOLD, sizeThreshold));
             }
         }
         catch(NumberFormatException e) {

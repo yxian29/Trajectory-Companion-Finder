@@ -17,6 +17,7 @@ public class Cli {
     public static final String OPT_STR_DENTHRESHOLD = "u";
     public static final String OPT_STR_TIMEINTERVAL = "T";
     public static final String OPT_STR_LIFETIME = "k";
+    public static final String OPT_STR_SIZETHRESHOLD = "l";
     public static final String OPT_STR_NUMPART = "n";
 
     public static final String ANSI_RESET = "\u001B[0m";
@@ -46,7 +47,7 @@ public class Cli {
         options.addOption(OPT_STR_DENTHRESHOLD, true, "density threshold");
         options.addOption(OPT_STR_TIMEINTERVAL, true, "time interval of a trajectory slot");
         options.addOption(OPT_STR_LIFETIME, true, "duration threshold");
-        options.addOption(OPT_STR_NUMPART, true, "number of sub-partitions");
+        options.addOption(OPT_STR_SIZETHRESHOLD, true, "size threshold");
     }
 
     public CommandLine getCmd()

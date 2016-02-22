@@ -18,6 +18,10 @@ public class TCRegion implements Serializable {
         _sid = sid;
     }
 
+    public int getSlotId() { return _sid; }
+
+    public int getRegionId() { return _rid; }
+
     public void addPoint(TCPoint point) {
         _points.put(point.getObjectId(), point);
 

@@ -1,69 +1,42 @@
 package mapReduce;
 
-import geometry.TCLine;
-import geometry.TCPoint;
-import geometry.TCPolyline;
-import geometry.TCRegion;
-import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
-
-import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 
 public class CoverageDensityConnectionMapper implements
-        PairFunction<Tuple2<Integer,TCRegion>,
-                        Integer, List<Tuple2<Integer, Integer>>> {
+        PairFlatMapFunction<Tuple2<String,Iterable<Integer>>, String,Iterable<Integer>> {
 
-    private double _distanceThreshold = 0.0;
-
-    public CoverageDensityConnectionMapper(double distanceThreshold)
+    public CoverageDensityConnectionMapper()
     {
-        _distanceThreshold = distanceThreshold;
     }
 
     @Override
-    public Tuple2<Integer, List<Tuple2<Integer, Integer>>> call(Tuple2<Integer, TCRegion> v1) throws Exception {
+    public Iterable<Tuple2<String, Iterable<Integer>>> call(Tuple2<String, Iterable<Integer>> input) throws Exception {
 
-        List<Tuple2<Integer, Integer>> list = new ArrayList<>();
+        List<Tuple2<String, Iterable<Integer>>> list = new ArrayList<>();
 
-        TCRegion region = v1._2();
-        Map<Integer, TCPoint> points = region.getPoints();
-        Map<Integer, TCPolyline> polylines = region.getPolylines();
+        String[] split = input._1().split(",");
+        int slotId = Integer.parseInt(split[0]);
+        int objId = Integer.parseInt(split[2]);
 
-        for (Map.Entry<Integer, TCPoint> pointEntry : points.entrySet()) {
-            for(Map.Entry<Integer, TCPolyline> polylineEntry : polylines.entrySet())
-            {
-                TCPoint point = pointEntry.getValue();
-                TCPolyline polyline = polylineEntry.getValue();
-                List<TCLine> lines = polylineEntry.getValue().getAsLineSegements();
+        List<Integer> copy = new ArrayList<>();
+        for (Integer i: input._2()) {
+            copy.add(i);
+        }
+        copy.add(objId);
 
-                int pointObjId = point.getObjectId();
-                int polylineObjId = polyline.getObjectId();
-
-                if(pointObjId == polylineObjId)
-                    continue;
-
-                for(TCLine line : lines)
-                {
-                    Line2D line2D = new Line2D.Double();
-                    line2D.setLine(line.getPoint1().getX(), line.getPoint1().getY(),
-                            line.getPoint2().getX(), line.getPoint2().getY());
-                    double dist = line2D.ptLineDist(point);
-
-                    if(dist < _distanceThreshold)
-                    {
-                        if(pointObjId > polylineObjId)
-                            list.add(new Tuple2<>(polylineObjId, pointObjId));
-                        else
-                            list.add(new Tuple2<>(pointObjId, polylineObjId));
-                    }
-                }
-            }
+        // for each density reachable object, swap the object id as key
+        for (Integer id : input._2()) {
+            list.add(new Tuple2<String, Iterable<Integer>>(
+                    String.format("%s,%s", slotId, id),
+                    copy
+            ));
         }
 
-        return new Tuple2<>(v1._1(), list);
+        return list;
     }
+
 }
