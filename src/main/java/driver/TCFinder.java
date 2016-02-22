@@ -41,7 +41,7 @@ public class TCFinder
         if(debugMode) sparkConf.setMaster("local[*]");
 
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath);
+        JavaRDD<String> file = ctx.textFile(inputFilePath, numSubPartitions);
 
         // partition the entire data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
@@ -71,6 +71,7 @@ public class TCFinder
         // the key is the accompanied objects; the value is the slot id
         JavaPairRDD<String, Iterable<Integer>> densityConnectionInvertedIndexRDD = densityConnectionRDD.
                 mapToPair(new CoverageDensityConnectionInvertedIndexer())
+                .distinct()
                 .groupByKey();
 
         // find continuous trajectory companions

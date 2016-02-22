@@ -47,6 +47,7 @@ public class Cli {
         options.addOption(OPT_STR_DENTHRESHOLD, true, "density threshold");
         options.addOption(OPT_STR_TIMEINTERVAL, true, "time interval of a trajectory slot");
         options.addOption(OPT_STR_LIFETIME, true, "duration threshold");
+        options.addOption(OPT_STR_NUMPART, true, "number of partitions");
         options.addOption(OPT_STR_SIZETHRESHOLD, true, "size threshold");
     }
 
