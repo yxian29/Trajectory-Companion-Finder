@@ -1,6 +1,6 @@
-package driver;
+package apps;
 
-import Utils.Cli;
+import Utils.*;
 import geometry.*;
 import mapReduce.*;
 
@@ -9,7 +9,6 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
 public class TCFinder
@@ -26,7 +25,7 @@ public class TCFinder
 
     public static void main( String[] args )
     {
-        Cli parser = new Cli(args);
+        TCCmdParser parser = new TCCmdParser(args);
         parser.parse();
 
         if(parser.getCmd() == null)
@@ -85,95 +84,95 @@ public class TCFinder
         ctx.stop();
     }
 
-    private static void initParams(Cli parser)
+    private static void initParams(TCCmdParser parser)
     {
-        String foundStr = Cli.ANSI_GREEN + "param -%s is set. Use custom value: %s" + Cli.ANSI_RESET;
-        String notFoundStr = Cli.ANSI_RED + "param -%s not found. Use default value: %s" + Cli.ANSI_RESET;
+        String foundStr = CmdParser.ANSI_GREEN + "param -%s is set. Use custom value: %s" + TCCmdParser.ANSI_RESET;
+        String notFoundStr = CmdParser.ANSI_RED + "param -%s not found. Use default value: %s" + TCCmdParser.ANSI_RESET;
         CommandLine cmd = parser.getCmd();
 
         try {
 
             // input
-            if (cmd.hasOption(Cli.OPT_STR_INPUTFILE)) {
-                inputFilePath = cmd.getOptionValue(Cli.OPT_STR_INPUTFILE);
+            if (cmd.hasOption(TCCmdParser.OPT_STR_INPUTFILE)) {
+                inputFilePath = cmd.getOptionValue(TCCmdParser.OPT_STR_INPUTFILE);
             } else {
                 System.err.println("Input file not defined. Aborting...");
                 parser.help();
             }
 
             // output
-            if (cmd.hasOption(Cli.OPT_STR_OUTPUTDIR)) {
-                outputDir = cmd.getOptionValue(Cli.OPT_STR_OUTPUTDIR);
+            if (cmd.hasOption(TCCmdParser.OPT_STR_OUTPUTDIR)) {
+                outputDir = cmd.getOptionValue(TCCmdParser.OPT_STR_OUTPUTDIR);
             } else {
                 System.err.println("Output directory not defined. Aborting...");
                 parser.help();
             }
 
             // debug
-            if (cmd.hasOption(Cli.OPT_STR_DEBUG)) {
+            if (cmd.hasOption(TCCmdParser.OPT_STR_DEBUG)) {
                 debugMode = true;
                 System.out.println("Enter debug mode. master forces to be local");
             }
 
             // distance threshold
-            if (cmd.hasOption(Cli.OPT_STR_DISTTHRESHOLD)) {
-                distanceThreshold = Double.parseDouble(cmd.getOptionValue(Cli.OPT_STR_DISTTHRESHOLD));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_DISTTHRESHOLD)) {
+                distanceThreshold = Double.parseDouble(cmd.getOptionValue(TCCmdParser.OPT_STR_DISTTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        TCCmdParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        TCCmdParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             }
 
             // density threshold
-            if (cmd.hasOption(Cli.OPT_STR_DENTHRESHOLD)) {
-                densityThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_DENTHRESHOLD));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_DENTHRESHOLD)) {
+                densityThreshold = Integer.parseInt(cmd.getOptionValue(TCCmdParser.OPT_STR_DENTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        TCCmdParser.OPT_STR_DENTHRESHOLD, densityThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        TCCmdParser.OPT_STR_DENTHRESHOLD, densityThreshold));
             }
 
             // time interval
-            if (cmd.hasOption(Cli.OPT_STR_TIMEINTERVAL)) {
-                timeInterval = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_TIMEINTERVAL));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_TIMEINTERVAL)) {
+                timeInterval = Integer.parseInt(cmd.getOptionValue(TCCmdParser.OPT_STR_TIMEINTERVAL));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_TIMEINTERVAL, timeInterval));
+                        TCCmdParser.OPT_STR_TIMEINTERVAL, timeInterval));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_TIMEINTERVAL, timeInterval));
+                        TCCmdParser.OPT_STR_TIMEINTERVAL, timeInterval));
             }
 
             // life time
-            if (cmd.hasOption(Cli.OPT_STR_LIFETIME)) {
-                durationThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_LIFETIME));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_LIFETIME)) {
+                durationThreshold = Integer.parseInt(cmd.getOptionValue(TCCmdParser.OPT_STR_LIFETIME));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_LIFETIME, durationThreshold));
+                        TCCmdParser.OPT_STR_LIFETIME, durationThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_LIFETIME, durationThreshold));
+                        TCCmdParser.OPT_STR_LIFETIME, durationThreshold));
             }
 
             // number of  sub-partitions
-            if (cmd.hasOption(Cli.OPT_STR_NUMPART)) {
-                numSubPartitions = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_NUMPART));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_NUMPART)) {
+                numSubPartitions = Integer.parseInt(cmd.getOptionValue(TCCmdParser.OPT_STR_NUMPART));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_NUMPART, numSubPartitions));
+                        TCCmdParser.OPT_STR_NUMPART, numSubPartitions));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_NUMPART, numSubPartitions));
+                        TCCmdParser.OPT_STR_NUMPART, numSubPartitions));
             }
 
             // size threshold
-            if (cmd.hasOption(Cli.OPT_STR_SIZETHRESHOLD)) {
-                sizeThreshold = Integer.parseInt(cmd.getOptionValue(Cli.OPT_STR_SIZETHRESHOLD));
+            if (cmd.hasOption(TCCmdParser.OPT_STR_SIZETHRESHOLD)) {
+                sizeThreshold = Integer.parseInt(cmd.getOptionValue(TCCmdParser.OPT_STR_SIZETHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        Cli.OPT_STR_SIZETHRESHOLD, sizeThreshold));
+                        TCCmdParser.OPT_STR_SIZETHRESHOLD, sizeThreshold));
             }
             else {
                 System.out.println(String.format(notFoundStr,
-                        Cli.OPT_STR_SIZETHRESHOLD, sizeThreshold));
+                        TCCmdParser.OPT_STR_SIZETHRESHOLD, sizeThreshold));
             }
         }
         catch(NumberFormatException e) {
