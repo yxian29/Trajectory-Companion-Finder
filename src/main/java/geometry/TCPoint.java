@@ -1,9 +1,13 @@
 package geometry;
 
+import org.apache.commons.math3.stat.clustering.Clusterable;
+import org.apache.commons.math3.stat.clustering.EuclideanDoublePoint;
+
 import java.awt.geom.Point2D;
 import java.io.Serializable;
+import java.util.Collection;
 
-public class TCPoint extends Point2D implements Serializable{
+public class TCPoint extends Point2D implements Serializable, Clusterable<TCPoint>{
 
     private int _objectId;
     private double _x;
@@ -36,9 +40,19 @@ public class TCPoint extends Point2D implements Serializable{
         _y = y;
     }
 
+
     public int compareTo(TCPoint comparePoint)
     {
         return this._timestamp - comparePoint.getTimeStamp();
     }
 
+    @Override
+    public double distanceFrom(TCPoint tcPoint) {
+        return 0;
+    }
+
+    @Override
+    public TCPoint centroidOf(Collection<TCPoint> collection) {
+        return null;
+    }
 }

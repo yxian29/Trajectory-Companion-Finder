@@ -2,16 +2,25 @@ package apps;
 
 import Utils.CmdParser;
 import Utils.GPCmdParser;
+import geometry.TCPoint;
+import geometry.TCRegion;
+import mapReduce.DBSCANClusterMapper;
+import mapReduce.KDTreeSubPartitionMapper;
+import mapReduce.TrajectorySlotMapper;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.math3.stat.clustering.Cluster;
+import org.apache.commons.math3.stat.clustering.DBSCANClusterer;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
 
 public class GPFinder {
 
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.005;    // epsilon
+    private static double distanceThreshold = 0.005;    // eps
     private static int densityThreshold = 3;            // mu
     private static int timeInterval = 60;               // delta t
     private static int lifetimeThreshold = 100;         // kc
@@ -28,6 +37,8 @@ public class GPFinder {
         if(parser.getCmd() == null)
             System.exit(0);
 
+        initParams(parser);
+
         SparkConf sparkConf = new SparkConf().
                 setAppName("GPFinder");
 
@@ -35,9 +46,27 @@ public class GPFinder {
         if(debugMode) sparkConf.setMaster("local[*]");
 
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath, numSubPartitions);
+        JavaRDD<String> file = ctx.textFile(inputFilePath);
 
-        // TODO: main workflow
+        // TODO: data partition
+        JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
+                file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
+
+        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
+                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
+
+        // TODO: find
+        JavaPairRDD<String, Cluster> testRDD =
+                subPartitionsRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold,
+                        densityThreshold));
+
+        // TODO: find same objects
+
+        // TODO: merge clusters
+
+        // TODO: discover gatherings
+
+        ctx.stop();
     }
 
     private static void initParams(GPCmdParser parser)
