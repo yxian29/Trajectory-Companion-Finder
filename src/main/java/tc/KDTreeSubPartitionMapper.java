@@ -1,4 +1,4 @@
-package TrajectoryCompanion;
+package tc;
 
 import common.data.KDNode;
 import common.data.KDTree;

@@ -1,4 +1,4 @@
-package GatheringPattern;
+package gp;
 
 import common.geometry.TCRegion;
 import org.apache.commons.math3.stat.clustering.Cluster;

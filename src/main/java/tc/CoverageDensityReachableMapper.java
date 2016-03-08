@@ -1,4 +1,4 @@
-package TrajectoryCompanion;
+package tc;
 
 import common.geometry.TCLine;
 import common.geometry.TCPoint;

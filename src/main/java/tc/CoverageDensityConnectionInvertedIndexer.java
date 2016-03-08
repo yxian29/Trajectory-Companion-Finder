@@ -1,12 +1,9 @@
-package TrajectoryCompanion;
+package tc;
 
-import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CoverageDensityConnectionInvertedIndexer implements
         PairFunction<Tuple2<String, Iterable<Integer>>, String, Integer>, Serializable {

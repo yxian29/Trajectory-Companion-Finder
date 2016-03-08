@@ -1,8 +1,8 @@
-package GatheringPattern;
+package gp;
 
-import common.Utils.CmdParser;
+import common.cmd.CmdParserBase;
 
-public class GPCmdParser extends CmdParser {
+public class GPCmdParser extends CmdParserBase {
 
     public static final String OPT_STR_INPUTFILE = "i";
     public static final String OPT_STR_OUTPUTDIR = "o";

@@ -1,4 +1,4 @@
-package common.Utils;
+package common.utils;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;

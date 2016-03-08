@@ -1,8 +1,8 @@
-package TrajectoryCompanion;
+package tc;
 
-import common.Utils.CmdParser;
+import common.cmd.CmdParserBase;
 
-public class TCCmdParser extends CmdParser {
+public class TCCmdParser extends CmdParserBase {
 
     public static final String OPT_STR_INPUTFILE = "i";
     public static final String OPT_STR_OUTPUTDIR = "o";

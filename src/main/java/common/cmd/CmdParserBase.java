@@ -1,12 +1,12 @@
-package common.Utils;
+package common.cmd;
 
-import TrajectoryCompanion.TCCmdParser;
+import tc.TCCmdParser;
 import org.apache.commons.cli.*;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class CmdParser {
+public class CmdParserBase {
 
     public static final String OPT_STR_HELP = "h";
     public static final String OPT_STR_HELP_ALT = "help";
@@ -26,7 +26,7 @@ public class CmdParser {
     protected CommandLineParser parser = new BasicParser();
     protected CommandLine cmd = null;
 
-    public CmdParser(String[] args) {
+    public CmdParserBase(String[] args) {
 
         this.args = args;
 

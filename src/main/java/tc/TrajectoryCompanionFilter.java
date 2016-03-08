@@ -1,6 +1,6 @@
-package TrajectoryCompanion;
+package tc;
 
-import common.Utils.MathUtil;
+import common.utils.MathUtil;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.spark.api.java.function.Function;

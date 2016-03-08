@@ -1,17 +1,16 @@
-package TrajectoryCompanion;
+package tc;
 
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 
-public class CoverageDensityReachableFilter
+public class CoverageDensityConnectionFilter
     implements Function<Tuple2<String, Iterable<Integer>>, Boolean> {
 
-    private int _densityThreshold = 0;
+    private int _sizeThreshold = 0;
 
-    public CoverageDensityReachableFilter(int densityThreshold)
-    {
-        _densityThreshold = densityThreshold;
+    public CoverageDensityConnectionFilter(int sizeThreshold) {
+        _sizeThreshold = sizeThreshold;
     }
 
     @Override
@@ -19,6 +18,6 @@ public class CoverageDensityReachableFilter
 
         Iterable<Integer> densityReachableItr = v1._2();
         int size = IteratorUtils.toList(densityReachableItr.iterator()).size();
-        return size >= _densityThreshold;
+        return size >= _sizeThreshold;
     }
 }

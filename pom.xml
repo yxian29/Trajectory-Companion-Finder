@@ -14,6 +14,13 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <repositories>
+    <!--<repository>-->
+      <!--<id>Sonatype Releases</id>-->
+      <!--<url>https://oss.sonatype.org/content/repositories/release/</url>-->
+    <!--</repository>-->
+  </repositories>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -36,6 +43,16 @@
       <artifactId>commons-math3</artifactId>
       <version>3.1.1</version>
     </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.scalanlp</groupId>-->
+      <!--<artifactId>breeze_2.11</artifactId>-->
+      <!--<version>0.11.2</version>-->
+    <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>org.scalanlp</groupId>-->
+      <!--<artifactId>nak_2.10</artifactId>-->
+      <!--<version>1.3</version>-->
+    <!--</dependency>-->
   </dependencies>
 
   <build>

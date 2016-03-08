@@ -1,7 +1,7 @@
 package apps;
 
-import TrajectoryCompanion.*;
-import common.Utils.CmdParser;
+import tc.*;
+import common.cmd.CmdParserBase;
 import common.geometry.*;
 
 import org.apache.commons.cli.CommandLine;
@@ -86,8 +86,8 @@ public class TCFinder
 
     private static void initParams(TCCmdParser parser)
     {
-        String foundStr = CmdParser.ANSI_GREEN + "param -%s is set. Use custom value: %s" + TCCmdParser.ANSI_RESET;
-        String notFoundStr = CmdParser.ANSI_RED + "param -%s not found. Use default value: %s" + TCCmdParser.ANSI_RESET;
+        String foundStr = CmdParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + TCCmdParser.ANSI_RESET;
+        String notFoundStr = CmdParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + TCCmdParser.ANSI_RESET;
         CommandLine cmd = parser.getCmd();
 
         try {

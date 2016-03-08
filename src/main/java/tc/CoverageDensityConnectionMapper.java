@@ -1,4 +1,4 @@
-package TrajectoryCompanion;
+package tc;
 
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;

@@ -1,4 +1,4 @@
-package TrajectoryCompanion;
+package tc;
 
 import common.geometry.TCPoint;
 import org.apache.spark.api.java.function.PairFunction;

@@ -1,19 +1,15 @@
 package apps;
 
-import common.Utils.CmdParser;
-import GatheringPattern.GPCmdParser;
-import common.geometry.TCPoint;
-import common.geometry.TCRegion;
-import GatheringPattern.DBSCANClusterMapper;
-import TrajectoryCompanion.KDTreeSubPartitionMapper;
-import TrajectoryCompanion.TrajectorySlotMapper;
+import gp.SnapshotMapper;
+import common.cmd.CmdParserBase;
+import gp.GPCmdParser;
+import common.geometry.*;
+import breeze.linalg.*;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import scala.Tuple2;
 
 public class GPFinder {
 
@@ -39,7 +35,7 @@ public class GPFinder {
         initParams(parser);
 
         SparkConf sparkConf = new SparkConf().
-                setAppName("GPFinder");
+                setAppName("gathering_pattern_finder");
 
         // force to local mode if it is debug
         if(debugMode) sparkConf.setMaster("local[*]");
@@ -47,17 +43,13 @@ public class GPFinder {
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile(inputFilePath);
 
-        // TODO: data partition
-        JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
-                file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
+        // Find snapshot per timestamp
+        JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD =
+                file.mapToPair(new SnapshotMapper()).groupByKey().cache();
 
-        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
-                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
+        // TODO: data partition - data within each snapshot are partitioned into n sub-partitions
 
-        // TODO: find
-        JavaPairRDD<String, Cluster> testRDD =
-                subPartitionsRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold,
-                        densityThreshold));
+        // TODO: find clusters - find clusters (DBSCAN) in each sub-partition
 
         // TODO: find same objects
 
@@ -68,10 +60,21 @@ public class GPFinder {
         ctx.stop();
     }
 
+    private void dbscan(DenseMatrix<Double> v)
+    {
+//        Seq<GDBSCAN.Point> s = null;
+//        GDBSCAN.Point<GDBSCAN.Point> p = new GDBSCAN.Point<>(1, null);
+//        GDBSCAN test = new GDBSCAN(
+//                DBSCAN.getNeighbours(1.0, gp.test.Funtion2(), p, s),
+//                DBSCAN.isCorePoint(3.0, null, s)
+//        );
+        //dbscan.cluster(v);
+    }
+
     private static void initParams(GPCmdParser parser)
     {
-        String foundStr = CmdParser.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CmdParser.ANSI_RESET;
-        String notFoundStr = CmdParser.ANSI_RED + "param -%s not found. Use default value: %s" + CmdParser.ANSI_RESET;
+        String foundStr = CmdParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CmdParserBase.ANSI_RESET;
+        String notFoundStr = CmdParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + CmdParserBase.ANSI_RESET;
         CommandLine cmd = parser.getCmd();
 
         try {
