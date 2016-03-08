@@ -1,8 +1,8 @@
 package apps;
 
-import Utils.*;
-import geometry.*;
-import mapReduce.*;
+import TrajectoryCompanion.*;
+import common.Utils.CmdParser;
+import common.geometry.*;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.spark.SparkConf;
@@ -42,7 +42,7 @@ public class TCFinder
     	JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile(inputFilePath, numSubPartitions);
 
-        // partition the entire data set into trajectory slots
+        // partition the entire common.data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
             file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();

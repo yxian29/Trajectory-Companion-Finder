@@ -1,15 +1,14 @@
 package apps;
 
-import Utils.CmdParser;
-import Utils.GPCmdParser;
-import geometry.TCPoint;
-import geometry.TCRegion;
-import mapReduce.DBSCANClusterMapper;
-import mapReduce.KDTreeSubPartitionMapper;
-import mapReduce.TrajectorySlotMapper;
+import common.Utils.CmdParser;
+import GatheringPattern.GPCmdParser;
+import common.geometry.TCPoint;
+import common.geometry.TCRegion;
+import GatheringPattern.DBSCANClusterMapper;
+import TrajectoryCompanion.KDTreeSubPartitionMapper;
+import TrajectoryCompanion.TrajectorySlotMapper;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.math3.stat.clustering.Cluster;
-import org.apache.commons.math3.stat.clustering.DBSCANClusterer;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
