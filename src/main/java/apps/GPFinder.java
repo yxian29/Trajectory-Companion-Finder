@@ -1,20 +1,15 @@
 package apps;
 
-import gp.DBSCANClusterMapper;
-import gp.SnapShotSubPartitionMapper;
-import gp.SnapshotMapper;
+import gp.*;
 import common.cmd.CmdParserBase;
-import gp.GPCmdParser;
 import common.geometry.*;
 //import breeze.linalg.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.math3.stat.clustering.Cluster;
-import org.apache.commons.math3.stat.clustering.DBSCANClusterer;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import scala.Tuple2;
 
 public class GPFinder {
 
@@ -48,22 +43,26 @@ public class GPFinder {
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile(inputFilePath);
 
-        // find snapshot per timestamp
-        JavaPairRDD<Integer, Iterable<TCPoint>> snapshotFlatMapRDD =
-                file.mapToPair(new SnapshotMapper()).groupByKey();
-
-        // data partition - data within each snapshot are partitioned into n sub-partitions
-        JavaRDD<Tuple2<Integer, TCRegion>> subpartitionRDD =
-                snapshotFlatMapRDD.flatMap(new SnapShotSubPartitionMapper(numSubPartitions));
+        // find snapshot per timestamp and data partition
+        // format: <timestamp, {point}>
+        JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD =
+                file.mapToPair(new SnapshotMapper()).groupByKey().repartition(numSubPartitions);
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
-        JavaPairRDD<String, Iterable<Cluster>> clusterRDD =
-                subpartitionRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold))
+        // format: <timestamp, {cluster}>
+        JavaPairRDD<Integer, Iterable<Cluster>> clusterRDD =
+                snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold))
                 .groupByKey();
 
-        // TODO: find same objects
+        // discover crowds
+        // format: <crowdId, {crowd}>
+        JavaPairRDD<Integer, Iterable<Cluster>> crowdRDD = clusterRDD.mapPartitionsToPair(
+                new CrowdMapPartitioner(timeInterval, densityThreshold, distanceThreshold));
 
-        // TODO: merge clusters
+        // TODO: find participator in a given crowd
+//        crowdRDD.flatMapToPair(new CrowdObjectInvertIndexer())
+//                .groupByKey()
+//                .filter();
 
         // TODO: discover gatherings
 

@@ -2,7 +2,7 @@ package gp;
 
 import common.geometry.TCPoint;
 import org.apache.commons.math3.stat.clustering.Cluster;
-import org.apache.commons.math3.stat.clustering.Clusterable;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 
@@ -10,32 +10,34 @@ import java.util.*;
 
 public class CrowdMapPartitioner
             implements PairFlatMapFunction<Iterator<Tuple2<Integer,Iterable<Cluster>>>,
-        Integer, Cluster> {
+        Integer, Iterable<Cluster>> {
 
     private int _timeInterval; // delta-t
     private int _densityThrehold; // mu
     private double _distanceThreshold; // delta, Dist(C(ti),C(ti+1) <= delta
 
-    public CrowdMapPartitioner(int deltat, int mu, double delta)
+    public CrowdMapPartitioner(int timeInterval, int densityThrehold, double distanceThreshold)
     {
-        _timeInterval = deltat;
-        _densityThrehold = mu;
-        _distanceThreshold = delta;
+        _timeInterval = timeInterval;
+        _densityThrehold = densityThrehold;
+        _distanceThreshold = distanceThreshold;
     }
 
     @Override
-    public Iterable<Tuple2<Integer, Cluster>> call(Iterator<Tuple2<Integer, Iterable<Cluster>>> input) throws Exception {
+    public Iterable<Tuple2<Integer, Iterable<Cluster>>> call(Iterator<Tuple2<Integer, Iterable<Cluster>>> input) throws Exception {
 
-        getCrowds(input);
-        return null;
+        Set<Tuple2<Integer, Iterable<Cluster>>> crowds = getCrowds(input);
+        return crowds;
     }
 
-    public Set<Iterable<Cluster>> getCrowds(Iterator<Tuple2<Integer, Iterable<Cluster>>> clusters) {
+    public Set<Tuple2<Integer, Iterable<Cluster>>> getCrowds(Iterator<Tuple2<Integer, Iterable<Cluster>>> clusters) {
 
         Tuple2<Integer, Iterable<Cluster>> cur = null;
         Tuple2<Integer, Iterable<Cluster>> prev = null;
 
-        Set<Iterable<Cluster>> crowds = new HashSet<>();
+        int cid = 1;
+        Set<Tuple2<Integer, Iterable<Cluster>>> crowds = new HashSet<>();
+        Set<Cluster> res = new HashSet<>();
 
         while(clusters.hasNext()) {
 
@@ -44,7 +46,6 @@ public class CrowdMapPartitioner
                 continue;
             }
 
-            Set<Cluster> res = new HashSet<>();
             cur = clusters.next();
 
             for (Cluster c: prev._2()) {
@@ -53,11 +54,9 @@ public class CrowdMapPartitioner
 
                 if(cp.size() == 0) {// Cr cannot be extended
                     if(validateTimeIntervals(prev._1(), cur._1())) {
-                        // TODO
+                        crowds.add(new Tuple2<Integer, Iterable<Cluster>>(cid++, res));
+                        res.clear();
                     }
-                }
-                else {
-                    // TODO
                 }
             }
 

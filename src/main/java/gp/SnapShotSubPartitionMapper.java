@@ -25,14 +25,19 @@ public class SnapShotSubPartitionMapper implements
     @Override
     public Iterable<Tuple2<Integer, TCRegion>> call(Tuple2<Integer, Iterable<TCPoint>> input) throws Exception {
         List<Tuple2<Integer, TCRegion>> regions = new ArrayList<>();
-        Tuple2<Double, Double> minmax = getMinMax(input._2());
-        double min = minmax._1();
-        double max = minmax._2();
+
+        int timestamp = input._1();
+
+        Tuple2<Double, Double> minMax = getMinMax(input._2());
+        double min = minMax._1();
+        double max = minMax._2();
         double length = (max - min) / _numSubPartitions;
 
+        int key = timestamp;
+        TCRegion value;
         for(int i = 1;i<= _numSubPartitions; ++i) {
-            Tuple2<Integer, TCRegion> t =
-                    new Tuple2<>(input._1(), new TCRegion(i, input._1()));
+            value = new TCRegion(i, input._1());
+            Tuple2<Integer, TCRegion> t = new Tuple2<>(key, value);
             regions.add(t);
         }
 
