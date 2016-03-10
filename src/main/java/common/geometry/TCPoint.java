@@ -46,8 +46,8 @@ public class TCPoint extends Point2D implements Serializable, Clusterable<TCPoin
     }
 
     @Override
-    public double distanceFrom(TCPoint tcPoint) {
-        return 0;
+    public double distanceFrom(TCPoint p) {
+        return Math.sqrt(Math.pow(this._x - p._x, 2) + Math.pow(this._y - p._y, 2));
     }
 
     @Override
