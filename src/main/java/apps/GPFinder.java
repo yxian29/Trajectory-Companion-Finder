@@ -52,7 +52,7 @@ public class GPFinder {
         // format: <timestamp, {cluster}>
         JavaPairRDD<Integer, Iterable<Cluster>> clusterRDD =
                 snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold))
-                .groupByKey();
+                .groupByKey().sortByKey();
 
         // discover crowds
         // format: <crowdId, {crowd}>

@@ -34,6 +34,7 @@ public class CrowdMapPartitioner
 
         Tuple2<Integer, Iterable<Cluster>> cur = null;
         Tuple2<Integer, Iterable<Cluster>> prev = null;
+        Tuple2<Integer, Iterable<Cluster>> prime = null;
 
         int cid = 1;
         Set<Tuple2<Integer, Iterable<Cluster>>> crowds = new HashSet<>();
@@ -43,6 +44,8 @@ public class CrowdMapPartitioner
 
             if(prev == null) {
                 prev = clusters.next();
+                prime = prev;
+                res.add(prime._2().iterator().next());
                 continue;
             }
 
@@ -50,13 +53,20 @@ public class CrowdMapPartitioner
 
             for (Cluster c: prev._2()) {
                 Set<Cluster> cp = RangeSearch(c, cur._2());
+
+                if(cp.size() != 0 && !clusters.hasNext()) {
+                    res.add(cur._2().iterator().next());
+                    crowds.add(new Tuple2<Integer, Iterable<Cluster>>(cid++, res));
+                }
+
                 res.addAll(cp);
 
                 if(cp.size() == 0) {// Cr cannot be extended
-                    if(validateTimeIntervals(prev._1(), cur._1())) {
-                        crowds.add(new Tuple2<Integer, Iterable<Cluster>>(cid++, res));
-                        res.clear();
-                    }
+                    crowds.add(new Tuple2<Integer, Iterable<Cluster>>(cid++, res));
+                    res.clear();
+
+                    prime = cur;
+                    res.add(prime._2().iterator().next());
                 }
             }
 
@@ -76,6 +86,9 @@ public class CrowdMapPartitioner
             if(!validateClusterDensity(c))
                 continue;
 
+            if(!validateTimeIntervals(prev, c))
+                continue;
+
             if(validateClusterDistance(prev, c, _distanceThreshold))
             {
                 result.add(c);
@@ -90,9 +103,13 @@ public class CrowdMapPartitioner
         return cluster.getPoints().size() >= _densityThrehold;
     }
 
-    private boolean validateTimeIntervals(int t1, int t2) {
+    private boolean validateTimeIntervals(Cluster c1, Cluster c2) {
+
+        TCPoint p1 = (TCPoint) c1.getPoints().get(0);
+        TCPoint p2 = (TCPoint) c2.getPoints().get(0);
+
         // requirement: t(i+1) - t(i) <= delta-t
-        return t1 - t2 <= _timeInterval;
+        return Math.abs(p1.getTimeStamp() - p2.getTimeStamp()) <= _timeInterval;
     }
 
     private boolean validateClusterDistance(Cluster c1, Cluster c2, double delta)
