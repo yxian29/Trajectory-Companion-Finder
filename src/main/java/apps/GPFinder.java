@@ -9,7 +9,10 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
+
+import java.util.List;
 
 public class GPFinder {
 
@@ -20,7 +23,7 @@ public class GPFinder {
     private static int timeInterval = 60;               // delta t
     private static int lifetimeThreshold = 100;         // kc
     private static int clusterNumThreshold = 3;         // kp
-    private static int participatorNumThreshold = 3;    // mp
+    private static int participatorNumThreshold = 2;    // mp
     private static int numSubPartitions = 2;
     private static boolean debugMode = false;
 
@@ -53,11 +56,14 @@ public class GPFinder {
         JavaPairRDD<Integer, Cluster> clusterRDD =
                 snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
 
-        // find all possible cluster pairs
+        // prepare to broadcast the full cluster list
+        // TODO: investigate the best practice instead of collect()
+        Broadcast<List<Tuple2<Integer, Cluster>>> clusterBroadcast =
+                ctx.broadcast(clusterRDD.sortByKey().collect());
+
         JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
-                clusterRDD.cartesian(clusterRDD)
-                        .filter(new ClusterFilter(
-                                timeInterval, densityThreshold, distanceThreshold));
+                clusterRDD.flatMapToPair(new ClusterMapsideJoinMapper(clusterBroadcast,
+                        timeInterval, densityThreshold, distanceThreshold));
 
         // group clusters by timestamp to form a crowd, given each crowd
         // an unique id
