@@ -3,13 +3,13 @@ package apps;
 import gp.*;
 import common.cmd.CmdParserBase;
 import common.geometry.*;
-//import breeze.linalg.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
 
 public class GPFinder {
 
@@ -50,35 +50,55 @@ public class GPFinder {
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
         // format: <timestamp, {cluster}>
-        JavaPairRDD<Integer, Iterable<Cluster>> clusterRDD =
-                snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold))
-                .groupByKey().sortByKey();
+        JavaPairRDD<Integer, Cluster> clusterRDD =
+                snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
 
-        // discover crowds
-        // format: <crowdId, {crowd}>
-        JavaPairRDD<Integer, Iterable<Cluster>> crowdRDD = clusterRDD.mapPartitionsToPair(
-                new CrowdMapPartitioner(timeInterval, densityThreshold, distanceThreshold));
+        // find all possible cluster pairs
+        JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
+                clusterRDD.cartesian(clusterRDD)
+                        .filter(new ClusterFilter(
+                                timeInterval, densityThreshold, distanceThreshold));
 
-        // TODO: find participator in a given crowd
-//        crowdRDD.flatMapToPair(new CrowdObjectInvertIndexer())
-//                .groupByKey()
-//                .filter();
+        // group clusters by timestamp to form a crowd, given each crowd
+        // an unique id
+        JavaPairRDD<Iterable<Tuple2<Integer, Cluster>>, Long> crowdRDD =
+                clusterPairRDD.groupByKey().values().zipWithUniqueId().cache();
 
-        // TODO: discover gatherings
+        // find participator in a given crowd
+        // format: <crowdId, {participator}>
+        JavaPairRDD<Long, Iterable<Integer>> parRDD =
+                crowdRDD.flatMapToPair(new CrowdObjectToTimestampMapper())
+                        // <-: <(crowdId, objectId), {timestamp}>
+                        .groupByKey()
+                        // <-: <crowdId, {timestamp}>
+                        .mapToPair(new ParticipatorMapper())
+                        // <-: <crowdId, {participator}>
+                        .filter(new ParticipatorFilter(clusterNumThreshold))
+                        // <-: <crowdId, {participator}>
+                        .reduceByKey(new ParticipatorReducer());
+
+        // convert crowd into the same format as participator
+        // format: <crowdId, {(objectId, timestamp)}>
+        JavaPairRDD<Long, Iterable<Tuple2<Integer, Integer>>> crowdToObjectTimestampRDD =
+                crowdRDD.flatMapToPair(new CrowdToObjectTimestampPairMapper());
+
+        // discover gatherings
+        // format: <crowdId, {(timestamp, {objectId})}>
+        JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> gatheringRDD =
+                crowdToObjectTimestampRDD.join(parRDD)
+                        // <-: <crowdId, {(objectId, timestamp)}, {participator}>
+                        .filter(new GatheringFilter(participatorNumThreshold))
+                        // <-: <crowdId, {(objectId, timestamp)}, {participator}>
+                        .mapToPair(new GatheringMapper())
+                        // <-: <crowdId, (timestamp, objectId)>
+                        .groupByKey();
+                        // <-: <crowdId, {(timestamp, {objectId})}>
+
+        //if(!debugMode)
+            gatheringRDD.saveAsTextFile(outputDir);
 
         ctx.stop();
     }
-
-//    private void dbscan(DenseMatrix<Double> v)
-//    {
-////        Seq<GDBSCAN.Point> s = null;
-////        GDBSCAN.Point<GDBSCAN.Point> p = new GDBSCAN.Point<>(1, null);
-////        GDBSCAN test = new GDBSCAN(
-////                DBSCAN.getNeighbours(1.0, gp.test.Funtion2(), p, s),
-////                DBSCAN.isCorePoint(3.0, null, s)
-////        );
-//        //dbscan.cluster(v);
-//    }
 
     private static void initParams(GPCmdParser parser)
     {
