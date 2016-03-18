@@ -1,5 +1,10 @@
 package apps;
 
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.broadcast.Broadcast;
+import org.apache.spark.storage.StorageLevel;
 import tc.*;
 import common.cmd.CmdParserBase;
 import common.geometry.*;
@@ -10,6 +15,9 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
+
+import java.util.List;
+import java.util.Map;
 
 public class TCFinder
 {
@@ -50,36 +58,63 @@ public class TCFinder
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
         JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
-                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions));
+                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions)).cache();
 
-        // find objects that are coverage density reachable from each
-        // format: <(sid, rid, oid), {Oi,Oj,...}>
+        // get each point per partition
+        // format: <(slotId, regionId), <objectId, point>>
+        JavaPairRDD<String, Tuple2<Integer, TCPoint>> pointsRDD =
+                subPartitionsRDD.flatMapToPair(new SubPartitionToPointsFlatMapper());
+
+        // get all polylines per partition
+        // format: <(slotId, regionId), {<objectId, polyline>}
+        JavaPairRDD<String, Map<Integer, TCPolyline>> polylinesRDD =
+                subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper()).cache();
+
+        Broadcast<List<Tuple2<String, Map<Integer, TCPolyline>>>> BroadcastPolylines =
+            ctx.broadcast(polylinesRDD.collect());
+
         JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
-                subPartitionsRDD.flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
-                .groupByKey()
-                .filter(new CoverageDensityReachableFilter(densityThreshold));
+                pointsRDD.flatMapToPair(
+                        new CoverageDensityReachableMapper(distanceThreshold, BroadcastPolylines))
+                        .groupByKey()
+                        .filter(new CoverageDensityReachableFilter(sizeThreshold));
 
-        // find coverage density connection in each sub-partition
-        // format: <(sid, rid), {Oi, Oj, ...}>
-        JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD =
-                densityReachableRDD.flatMapToPair(new CoverageDensityConnectionMapper())
-                .reduceByKey(new CoverageDensityConnectionReducer())
-                .filter(new CoverageDensityConnectionFilter(sizeThreshold));
+        densityReachableRDD.saveAsTextFile(outputDir);
+//        pointsRDD.join(polylinesRDD).flatMapToPair(
+//                        new CoverageDensityReachableMapper(distanceThreshold))
+//                        .groupByKey()
+//                        .filter(new CoverageDensityReachableFilter(sizeThreshold));
+//
+//        densityReachableRDD.saveAsTextFile(outputDir);
 
-        // invert indexes base on the density connection found. such that
-        // the key is the accompanied objects; the value is the slot id
-        JavaPairRDD<String, Iterable<Integer>> densityConnectionInvertedIndexRDD = densityConnectionRDD.
-                mapToPair(new CoverageDensityConnectionInvertedIndexer())
-                .distinct()
-                .groupByKey();
-
-        // find continuous trajectory companions
-        JavaPairRDD<String, Iterable<Integer>> resultRDD =
-                densityConnectionInvertedIndexRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
-
-        System.out.println(String.format("Saving result to %s", outputDir));
-        //resultRDD.saveAsTextFile(outputDir);
-        resultRDD.take(1);
+//        // find objects that are coverage density reachable from each
+//        // format: <(sid, rid, oid), {Oi,Oj,...}>
+//        JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
+//                subPartitionsRDD.flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
+//                .groupByKey()
+//                .filter(new CoverageDensityReachableFilter(densityThreshold));
+//
+//        // find coverage density connection in each sub-partition
+//        // format: <(sid, rid), {Oi, Oj, ...}>
+//        JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD =
+//                densityReachableRDD.flatMapToPair(new CoverageDensityConnectionMapper())
+//                .reduceByKey(new CoverageDensityConnectionReducer())
+//                .filter(new CoverageDensityConnectionFilter(sizeThreshold));
+//
+//        // invert indexes base on the density connection found. such that
+//        // the key is the accompanied objects; the value is the slot id
+//        JavaPairRDD<String, Iterable<Integer>> densityConnectionInvertedIndexRDD = densityConnectionRDD.
+//                mapToPair(new CoverageDensityConnectionInvertedIndexer())
+//                .distinct()
+//                .groupByKey();
+//
+//        // find continuous trajectory companions
+//        JavaPairRDD<String, Iterable<Integer>> resultRDD =
+//                densityConnectionInvertedIndexRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
+//
+//        System.out.println(String.format("Saving result to %s", outputDir));
+//        //resultRDD.saveAsTextFile(outputDir);
+//        resultRDD.take(1);
 
         ctx.stop();
     }
