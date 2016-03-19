@@ -18,9 +18,8 @@ public class TrajectoryCompanionFilter implements Function<Tuple2<String, Iterab
     }
 
     @Override
-    public Boolean call(Tuple2<String, Iterable<Integer>> t) throws Exception {
-
-        List<Integer> slotList = IteratorUtils.toList(t._2().iterator());
+    public Boolean call(Tuple2<String, Iterable<Integer>> input) throws Exception {
+        List<Integer> slotList = IteratorUtils.toList(input._2().iterator());
         int[] slotArray =  ArrayUtils.toPrimitive(slotList.toArray(new Integer[slotList.size()]));
         int result = MathUtil.maxSubarray(slotArray);
         return result >= _numContinousSlots;

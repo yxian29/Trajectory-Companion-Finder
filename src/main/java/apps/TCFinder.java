@@ -1,10 +1,6 @@
 package apps;
 
-import org.apache.spark.api.java.function.Function2;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.broadcast.Broadcast;
-import org.apache.spark.storage.StorageLevel;
 import tc.*;
 import common.cmd.CmdParserBase;
 import common.geometry.*;
@@ -23,12 +19,12 @@ public class TCFinder
 {
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.00005;
+    private static double distanceThreshold = 0.0001;
     private static int densityThreshold = 3;
     private static int timeInterval = 50;
     private static int durationThreshold = 3;
     private static int numSubPartitions = 2;
-    private static int sizeThreshold = 3;
+    private static int sizeThreshold = 2;
     private static boolean debugMode = false;
 
     public static void main( String[] args )
@@ -70,51 +66,65 @@ public class TCFinder
         JavaPairRDD<String, Map<Integer, TCPolyline>> polylinesRDD =
                 subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper()).cache();
 
+        // broadcast polylines in order to compute density rechable
         Broadcast<List<Tuple2<String, Map<Integer, TCPolyline>>>> BroadcastPolylines =
             ctx.broadcast(polylinesRDD.collect());
 
+        // get density reachable per sub partition
+        // format: <(slotId, regionId, objectId), {objectId}>
         JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
                 pointsRDD.flatMapToPair(
                         new CoverageDensityReachableMapper(distanceThreshold, BroadcastPolylines))
                         .groupByKey()
-                        .filter(new CoverageDensityReachableFilter(sizeThreshold));
+                        .filter(new CoverageDensityReachableFilter(densityThreshold));
 
-        densityReachableRDD.saveAsTextFile(outputDir);
-//        pointsRDD.join(polylinesRDD).flatMapToPair(
-//                        new CoverageDensityReachableMapper(distanceThreshold))
-//                        .groupByKey()
-//                        .filter(new CoverageDensityReachableFilter(sizeThreshold));
-//
-//        densityReachableRDD.saveAsTextFile(outputDir);
+        // remove objectId from key
+        // format: <(slotId, regionId), {objectId}>
+        JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD
+                = densityReachableRDD
+                        .mapToPair(new SubPartitionRemoveObjectIDMapper()).cache();
 
-//        // find objects that are coverage density reachable from each
-//        // format: <(sid, rid, oid), {Oi,Oj,...}>
-//        JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
-//                subPartitionsRDD.flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
-//                .groupByKey()
-//                .filter(new CoverageDensityReachableFilter(densityThreshold));
-//
-//        // find coverage density connection in each sub-partition
-//        // format: <(sid, rid), {Oi, Oj, ...}>
-//        JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD =
-//                densityReachableRDD.flatMapToPair(new CoverageDensityConnectionMapper())
-//                .reduceByKey(new CoverageDensityConnectionReducer())
-//                .filter(new CoverageDensityConnectionFilter(sizeThreshold));
-//
-//        // invert indexes base on the density connection found. such that
-//        // the key is the accompanied objects; the value is the slot id
-//        JavaPairRDD<String, Iterable<Integer>> densityConnectionInvertedIndexRDD = densityConnectionRDD.
-//                mapToPair(new CoverageDensityConnectionInvertedIndexer())
-//                .distinct()
-//                .groupByKey();
-//
-//        // find continuous trajectory companions
-//        JavaPairRDD<String, Iterable<Integer>> resultRDD =
-//                densityConnectionInvertedIndexRDD.filter(new TrajectoryCompanionFilter(durationThreshold));
-//
-//        System.out.println(String.format("Saving result to %s", outputDir));
-//        //resultRDD.saveAsTextFile(outputDir);
-//        resultRDD.take(1);
+        // send density connection to worker node in order to merge objects
+        Broadcast<List<Tuple2<String, Iterable<Integer>>>>
+                subpartBroadcast = ctx.broadcast(densityConnectionRDD.collect());
+
+        // merge density connection sub-partitions
+        // format: <(slotId, regionId), {{objectId}}>
+        JavaPairRDD<String, Iterable<Integer>> subpartMergeConnectionRDD =
+                densityConnectionRDD.mapToPair(
+                new CoverageDensityConnectionSubPartitionMerger(subpartBroadcast))
+                .distinct();
+
+        // remove regionId from key
+        // format: <slotId, {objectId}>
+        JavaPairRDD<Integer, Iterable<Integer>> slotConnectionRDD =
+        subpartMergeConnectionRDD
+                .mapToPair(new SlotRemoveSubPartitionIDMapper()).cache();
+
+        // broadcast connections in order to merge connection per slot
+        Broadcast<List<Tuple2<Integer, Iterable<Integer>>>> slotConnBroadcast =
+        ctx.broadcast(slotConnectionRDD.collect());
+
+        // merge density connection per slot
+        // format: <slotId, {objectId}>
+        JavaPairRDD<Integer, Iterable<Integer>> slotMergeConnectionRDD =
+                slotConnectionRDD
+                .mapToPair(new CoverageDensityConnectionSlotMerger(slotConnBroadcast))
+                .distinct();
+
+        // obtain trajectory companion
+        // format: <{objectId}, {slotId}>
+        JavaPairRDD<String, Iterable<Integer>> companionRDD =
+        slotMergeConnectionRDD
+                .flatMapToPair(new CoverageDensityConnectionSubsetMapper(sizeThreshold))
+                .mapToPair(new CoverageDensityConnectionMapper())
+                .groupByKey()
+                .filter(new TrajectoryCompanionFilter(durationThreshold));
+
+        if(debugMode)
+            companionRDD.take(1);
+        else
+            companionRDD.saveAsTextFile(outputDir);
 
         ctx.stop();
     }
