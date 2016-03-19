@@ -100,7 +100,9 @@ public class GPFinder {
                         .groupByKey();
                         // <-: <crowdId, {(timestamp, {objectId})}>
 
-        //if(!debugMode)
+        if(debugMode)
+            gatheringRDD.take(1);
+        else
             gatheringRDD.saveAsTextFile(outputDir);
 
         ctx.stop();
