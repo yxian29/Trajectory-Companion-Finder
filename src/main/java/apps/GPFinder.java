@@ -18,7 +18,7 @@ public class GPFinder {
 
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.005;    // eps
+    private static double distanceThreshold = 0.0001;   // eps
     private static int densityThreshold = 3;            // mu
     private static int timeInterval = 60;               // delta t
     private static int lifetimeThreshold = 100;         // kc
@@ -68,7 +68,10 @@ public class GPFinder {
         // group clusters by timestamp to form a crowd, given each crowd
         // an unique id
         JavaPairRDD<Iterable<Tuple2<Integer, Cluster>>, Long> crowdRDD =
-                clusterPairRDD.groupByKey().values().zipWithUniqueId().cache();
+                clusterPairRDD.groupByKey()
+                        .values()
+                        .filter(new CrowdTimeIntervalFilter(lifetimeThreshold))
+                        .zipWithUniqueId().cache();
 
         // find participator in a given crowd
         // format: <crowdId, {participator}>
