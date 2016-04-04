@@ -29,7 +29,8 @@ public class GatheringMapper implements
             if(timestamp == -1)
                 timestamp = pair._2();
 
-            objectIds.add(pair._1());
+            if(!objectIds.contains(pair._1()))
+                objectIds.add(pair._1());
         }
 
         return new Tuple2(crowdId,
