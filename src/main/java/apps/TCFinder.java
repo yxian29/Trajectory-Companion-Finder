@@ -1,5 +1,7 @@
 package apps;
 
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.broadcast.Broadcast;
 import tc.*;
 import common.cmd.CmdParserBase;
@@ -66,23 +68,18 @@ public class TCFinder
         JavaPairRDD<String, Map<Integer, TCPolyline>> polylinesRDD =
                 subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper()).cache();
 
-        // broadcast polylines in order to compute density rechable
-        Broadcast<List<Tuple2<String, Map<Integer, TCPolyline>>>> BroadcastPolylines =
-            ctx.broadcast(polylinesRDD.collect());
-
         // get density reachable per sub partition
         // format: <(slotId, regionId, objectId), {objectId}>
         JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
-                pointsRDD.flatMapToPair(
-                        new CoverageDensityReachableMapper(distanceThreshold, BroadcastPolylines))
-                        .groupByKey()
-                        .filter(new CoverageDensityReachableFilter(densityThreshold));
+                pointsRDD.join(polylinesRDD)
+                .flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
+                .groupByKey().filter(new CoverageDensityReachableFilter(densityThreshold));
 
         // remove objectId from key
         // format: <(slotId, regionId), {objectId}>
         JavaPairRDD<String, Iterable<Integer>> densityConnectionRDD
                 = densityReachableRDD
-                        .mapToPair(new SubPartitionRemoveObjectIDMapper()).cache();
+                        .mapToPair(new SubPartitionRemoveObjectIDMapper());
 
         // send density connection to worker node in order to merge objects
         Broadcast<List<Tuple2<String, Iterable<Integer>>>>
