@@ -1,8 +1,4 @@
 package apps;
-
-import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.broadcast.Broadcast;
 import tc.*;
 import common.cmd.CmdParserBase;
 import common.geometry.*;
@@ -14,8 +10,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TCFinder
 {
@@ -81,38 +76,23 @@ public class TCFinder
                 = densityReachableRDD
                         .mapToPair(new SubPartitionRemoveObjectIDMapper());
 
-        // send density connection to worker node in order to merge objects
-        Broadcast<List<Tuple2<String, Iterable<Integer>>>>
-                subpartBroadcast = ctx.broadcast(densityConnectionRDD.collect());
-
         // merge density connection sub-partitions
         // format: <(slotId, regionId), {{objectId}}>
         JavaPairRDD<String, Iterable<Integer>> subpartMergeConnectionRDD =
-                densityConnectionRDD.mapToPair(
-                new CoverageDensityConnectionSubPartitionMerger(subpartBroadcast))
-                .distinct();
+                densityConnectionRDD
+                .reduceByKey(new CoverageDensityConnectionReducer());
 
         // remove regionId from key
         // format: <slotId, {objectId}>
         JavaPairRDD<Integer, Iterable<Integer>> slotConnectionRDD =
         subpartMergeConnectionRDD
-                .mapToPair(new SlotRemoveSubPartitionIDMapper()).cache();
-
-        // broadcast connections in order to merge connection per slot
-        Broadcast<List<Tuple2<Integer, Iterable<Integer>>>> slotConnBroadcast =
-        ctx.broadcast(slotConnectionRDD.collect());
-
-        // merge density connection per slot
-        // format: <slotId, {objectId}>
-        JavaPairRDD<Integer, Iterable<Integer>> slotMergeConnectionRDD =
-                slotConnectionRDD
-                .mapToPair(new CoverageDensityConnectionSlotMerger(slotConnBroadcast))
-                .distinct();
+                .mapToPair(new SlotRemoveSubPartitionIDMapper())
+                .reduceByKey(new CoverageDensityConnectionReducer());
 
         // obtain trajectory companion
         // format: <{objectId}, {slotId}>
         JavaPairRDD<String, Iterable<Integer>> companionRDD =
-        slotMergeConnectionRDD
+                slotConnectionRDD
                 .flatMapToPair(new CoverageDensityConnectionSubsetMapper(sizeThreshold))
                 .mapToPair(new CoverageDensityConnectionMapper())
                 .groupByKey()

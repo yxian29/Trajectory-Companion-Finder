@@ -33,18 +33,12 @@ public class CoverageDensityConnectionSubsetMapper implements
         List<Set<Integer>> result = new ArrayList();
 
         int numOfSubsets = 1 << input.size();
-
-        // TODO: remove this once we figure out how to calculate all subsets efficiently
-        if(numOfSubsets > 10) // 2^10 subsets
-            numOfSubsets = 10;
+        if(numOfSubsets > 31) // Integer.MAX_VALUE = 2^32 - 1
+            numOfSubsets = 31;
 
         for(int i=0; i< numOfSubsets; i++) {
             int pos = 0;
             int bitmask = i;
-
-//            int bitCount = Integer.bitCount(i);
-//            if(bitCount < _sizeThreshold)
-//                continue;
 
             Set<Integer> set = new TreeSet();
 
