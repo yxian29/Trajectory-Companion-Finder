@@ -1,4 +1,5 @@
 package apps;
+import org.apache.spark.HashPartitioner;
 import tc.*;
 import common.cmd.CmdParserBase;
 import common.geometry.*;
@@ -16,12 +17,12 @@ public class TCFinder
 {
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.0001;
-    private static int densityThreshold = 3;
-    private static int timeInterval = 50;
-    private static int durationThreshold = 3;
-    private static int numSubPartitions = 2;
-    private static int sizeThreshold = 2;
+    private static double distanceThreshold = 0.0001;   //eps
+    private static int densityThreshold = 3;            //mu
+    private static int timeInterval = 50;               //T
+    private static int durationThreshold = 3;           //k
+    private static int numSubPartitions = 2;            //n
+    private static int sizeThreshold = 2;               //l
     private static boolean debugMode = false;
 
     public static void main( String[] args )
@@ -35,7 +36,7 @@ public class TCFinder
         initParams(parser);
 
     	SparkConf sparkConf = new SparkConf().
-                setAppName("TrajectoryCompanionFinder");
+                setAppName("trajectory_companion_finder");
 
         // force to local mode if it is debug
         if(debugMode) sparkConf.setMaster("local[*]");
@@ -46,7 +47,9 @@ public class TCFinder
         // partition the entire common.data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
         JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
-            file.mapToPair(new TrajectorySlotMapper(timeInterval)).groupByKey();
+            file.mapToPair(new TrajectorySlotMapper(timeInterval))
+                    .partitionBy(new HashPartitioner(numSubPartitions))
+                    .groupByKey();
 
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
@@ -61,7 +64,7 @@ public class TCFinder
         // get all polylines per partition
         // format: <(slotId, regionId), {<objectId, polyline>}
         JavaPairRDD<String, Map<Integer, TCPolyline>> polylinesRDD =
-                subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper()).cache();
+                subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper());
 
         // get density reachable per sub partition
         // format: <(slotId, regionId, objectId), {objectId}>

@@ -21,7 +21,7 @@ public class GPFinder {
     private static double distanceThreshold = 0.0001;   // eps
     private static int densityThreshold = 3;            // mu
     private static int timeInterval = 60;               // delta t
-    private static int lifetimeThreshold = 100;         // kc
+    private static int lifetimeThreshold = 70;          // kc
     private static int clusterNumThreshold = 3;         // kp
     private static int participatorNumThreshold = 2;    // mp
     private static int numSubPartitions = 2;
