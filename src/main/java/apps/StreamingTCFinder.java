@@ -4,6 +4,7 @@ import common.geometry.TCPoint;
 import common.geometry.TCPolyline;
 import common.geometry.TCRegion;
 import kafka.serializer.StringDecoder;
+import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
@@ -63,6 +64,12 @@ public class StreamingTCFinder {
                 kafkaParams,
                 topicsSet
         );
+        /* could be used to apply tcf on all rdds of stream...TODO : compare with what I did so far
+        dStream.foreachRDD {
+            windowRdd => {
+                if (!windowRdd.isEmpty) processWindow(windowRdd.cache())
+            }
+        }*/
 
         JavaDStream<String> lines = messages.map(m -> m._2());
 
@@ -127,7 +134,11 @@ public class StreamingTCFinder {
         //Desired Results from Trajectories1.txt
         //(2,12,[8, 1, 5, 2, 3])
         //(2,81,[8, 9, 10])
-        companionRDD.print();
+        companionRDD.saveAsHadoopFiles("hdfs://127.0.0.1:8020/user/spark/TCF","csv",
+                String.class, String.class, (Class) TextOutputFormat.class);
+
+        //JavaDStream<Long> count = companionRDD.count().reduce( (p1, p2) -> (p1 + p2));
+
 
         jssc.start();
         jssc.awaitTermination();
