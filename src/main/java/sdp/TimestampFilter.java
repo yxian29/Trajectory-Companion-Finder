@@ -2,12 +2,12 @@ package sdp;
 
 import org.apache.spark.api.java.function.Function;
 
-public class TimestampFiler implements Function<String, Boolean> {
+public class TimestampFilter implements Function<String, Boolean> {
 
         private int _lowerBound ;
         private int _upperBound ;
 
-        public TimestampFiler(int[] slotInterval)
+        public TimestampFilter(int[] slotInterval)
         {
             _lowerBound = slotInterval[0];
             _upperBound = slotInterval[1];
@@ -17,7 +17,7 @@ public class TimestampFiler implements Function<String, Boolean> {
         public Boolean call(String line) throws  Exception {
 
             String[] split = line.split(",");
-            Integer timestamp = 0;
+            Integer timestamp;
             timestamp = Integer.parseInt(split[3]);
 
             if(split[3].contains(":")) // assuming HH:mm format
@@ -29,7 +29,7 @@ public class TimestampFiler implements Function<String, Boolean> {
                 timestamp = Integer.parseInt(split[3]);
             }
 
-            return (timestamp > _lowerBound && timestamp <= _upperBound);
+            return (timestamp >= _lowerBound && timestamp < _upperBound);
         }
 
     private int toHourMin(String timestamp)
