@@ -18,8 +18,8 @@ import java.util.Properties;
 public class KafkaStreamGenerator {
 
     private static String topic = "SpatialData3";
-    private static String inputFilePath = "C:\\Users\\kevinkim\\IdeaProjects\\Streaming-TCFinder\\data\\dataset_2\\Trajectory_4.txt";
-    private static int timeSlotDuration = 50;
+    private static String inputFilePath = "C:\\Users\\kevinkim\\IdeaProjects\\Streaming-TCFinder\\data\\dataset_2\\Trajectory_*.txt";
+    private static int timeSlotDuration = 1000;
     private static int timeScale = 10;
     private static String broker = "localhost:9092";
     private static boolean debugMode = true;
@@ -54,7 +54,7 @@ public class KafkaStreamGenerator {
             System.out.print("[" + date + "] Sending Msg ( " + (i + 1) + "/"
                     + messageSequence.size() + " ) containing ( " + messageSequence.get(i).size()
                     +  "/" + totalTrajectoriesCount + " ) trajectories\n");
-            //producer.send(messageSequence.get(i));
+            producer.send(messageSequence.get(i));
             Thread.sleep(publishInterval);
 
         }
@@ -62,8 +62,6 @@ public class KafkaStreamGenerator {
     }
 
     public void createMessageSequence(){
-
-        System.out.println("  Creating Message Sequence");
 
         SparkConf sparkConf = new SparkConf().setAppName("KafkaStreamGenerator");
 
@@ -92,8 +90,14 @@ public class KafkaStreamGenerator {
         boolean successfulPartitioning = false;
         int retries = 0;
 
+
+        ctx.broadcast(messageSequence);
+
+
         while( !successfulPartitioning && retries < maxRetries) {
 
+
+            //need to find an alternative to for loop, for loop over collect is a huge bottle neck on performance!
             for (int i = 1; i <= timeSlotCount; i++) {
 
                 currTimeSlotStart = (i - 1) * timeSlotDuration + streamStart;
@@ -104,10 +108,12 @@ public class KafkaStreamGenerator {
 
                 currentTimeSlotTrajectories = new ArrayList<>();
 
-                trajectoriesInTimeSlot.foreach(t -> currentTimeSlotTrajectories.add(
-                        new KeyedMessage<Integer, String>(topic, t)));
+                List<KeyedMessage<Integer,String>> keyedMessageList =
+                        trajectoriesInTimeSlot.map(t -> new KeyedMessage<Integer,String>(topic, t))
+                                              .collect();
 
-                partitionedTrajectoryCount = partitionedTrajectoryCount + currentTimeSlotTrajectories.size();
+                currentTimeSlotTrajectories = keyedMessageList;
+                partitionedTrajectoryCount = partitionedTrajectoryCount + keyedMessageList.size();
 
                 messageSequence.add(currentTimeSlotTrajectories);
 
@@ -144,13 +150,13 @@ public class KafkaStreamGenerator {
         streamGenerator.createMessageSequence();
 
         // Initialize producer
-       // streamGenerator.initializeProducer();
+        streamGenerator.initializeProducer();
 
         // Publish message
         streamGenerator.publishMessage();
 
         //Close the producer
-        //producer.close();
+        producer.close();
     }
 
 
