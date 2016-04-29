@@ -4,33 +4,32 @@ import org.apache.spark.api.java.function.Function;
 
 public class TimestampFilter implements Function<String, Boolean> {
 
-        private int _lowerBound ;
-        private int _upperBound ;
+    private int _lowerBound ;
+    private int _upperBound ;
 
-        public TimestampFilter(int[] slotInterval)
+    public TimestampFilter(int start, int end)
+    {
+        _lowerBound = start;
+        _upperBound = end;
+    }
+
+    @Override
+    public Boolean call(String line) throws  Exception {
+
+        String[] split = line.split(",");
+        Integer timestamp;
+
+        if(split[3].contains(":")) // assuming HH:mm format
         {
-            _lowerBound = slotInterval[0];
-            _upperBound = slotInterval[1];
+            timestamp = toHourMin(split[3]);
         }
-
-        @Override
-        public Boolean call(String line) throws  Exception {
-
-            String[] split = line.split(",");
-            Integer timestamp;
+        else // assuming integer format
+        {
             timestamp = Integer.parseInt(split[3]);
-
-            if(split[3].contains(":")) // assuming HH:mm format
-            {
-                timestamp = toHourMin(split[3]);
-            }
-            else // assuming integer format
-            {
-                timestamp = Integer.parseInt(split[3]);
-            }
-
-            return (timestamp >= _lowerBound && timestamp < _upperBound);
         }
+
+        return (timestamp >= _lowerBound && timestamp < _upperBound);
+    }
 
     private int toHourMin(String timestamp)
     {
