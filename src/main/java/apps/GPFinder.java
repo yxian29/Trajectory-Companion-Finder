@@ -1,7 +1,7 @@
 package apps;
 
 import gp.*;
-import common.cmd.CmdParserBase;
+import common.cli.CliParserBase;
 import common.geometry.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.math3.stat.clustering.Cluster;
@@ -29,7 +29,7 @@ public class GPFinder {
 
     public static void main(String[] args) {
 
-        GPCmdParser parser = new GPCmdParser(args);
+        GPBatchCliParser parser = new GPBatchCliParser(args);
         parser.parse();
 
         if (parser.getCmd() == null)
@@ -111,104 +111,104 @@ public class GPFinder {
         ctx.stop();
     }
 
-    private static void initParams(GPCmdParser parser)
+    private static void initParams(GPBatchCliParser parser)
     {
-        String foundStr = CmdParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CmdParserBase.ANSI_RESET;
-        String notFoundStr = CmdParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + CmdParserBase.ANSI_RESET;
+        String foundStr = CliParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CliParserBase.ANSI_RESET;
+        String notFoundStr = CliParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + CliParserBase.ANSI_RESET;
         CommandLine cmd = parser.getCmd();
 
         try {
 
             // input
-            if (cmd.hasOption(GPCmdParser.OPT_STR_INPUTFILE)) {
-                inputFilePath = cmd.getOptionValue(GPCmdParser.OPT_STR_INPUTFILE);
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_INPUTFILE)) {
+                inputFilePath = cmd.getOptionValue(GPBatchCliParser.OPT_STR_INPUTFILE);
             } else {
                 System.err.println("Input file not defined. Aborting...");
                 parser.help();
             }
 
             // output
-            if (cmd.hasOption(GPCmdParser.OPT_STR_OUTPUTDIR)) {
-                outputDir = cmd.getOptionValue(GPCmdParser.OPT_STR_OUTPUTDIR);
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_OUTPUTDIR)) {
+                outputDir = cmd.getOptionValue(GPBatchCliParser.OPT_STR_OUTPUTDIR);
             } else {
                 System.err.println("Output directory not defined. Aborting...");
                 parser.help();
             }
 
             // debug
-            if (cmd.hasOption(GPCmdParser.OPT_STR_DEBUG)) {
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_DEBUG)) {
                 debugMode = true;
                 System.out.println("Enter debug mode. master forces to be local");
             }
 
             // distance threshold
-            if (cmd.hasOption(GPCmdParser.OPT_STR_DISTTHRESHOLD)) {
-                distanceThreshold = Double.parseDouble(cmd.getOptionValue(GPCmdParser.OPT_STR_DISTTHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_DISTTHRESHOLD)) {
+                distanceThreshold = Double.parseDouble(cmd.getOptionValue(GPBatchCliParser.OPT_STR_DISTTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        GPBatchCliParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        GPBatchCliParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             }
 
             // density threshold
-            if (cmd.hasOption(GPCmdParser.OPT_STR_DENTHRESHOLD)) {
-                densityThreshold = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_DENTHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_DENTHRESHOLD)) {
+                densityThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_DENTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        GPBatchCliParser.OPT_STR_DENTHRESHOLD, densityThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        GPBatchCliParser.OPT_STR_DENTHRESHOLD, densityThreshold));
             }
 
             // time interval
-            if (cmd.hasOption(GPCmdParser.OPT_STR_TIMETHRESHOLD)) {
-                timeInterval = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_TIMETHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_TIMETHRESHOLD)) {
+                timeInterval = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_TIMETHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_TIMETHRESHOLD, timeInterval));
+                        GPBatchCliParser.OPT_STR_TIMETHRESHOLD, timeInterval));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_TIMETHRESHOLD, timeInterval));
+                        GPBatchCliParser.OPT_STR_TIMETHRESHOLD, timeInterval));
             }
 
             // life time
-            if (cmd.hasOption(GPCmdParser.OPT_STR_LIFETIMETHRESHOLD)) {
-                lifetimeThreshold = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_LIFETIMETHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD)) {
+                lifetimeThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
+                        GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
+                        GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
             }
 
             // cluster number threshold
-            if (cmd.hasOption(GPCmdParser.OPT_STR_CLUSTERNUMTHRESHOLD)) {
-                clusterNumThreshold = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_CLUSTERNUMTHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD)) {
+                clusterNumThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
+                        GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
+                        GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
             }
 
             // participator number threshold
-            if (cmd.hasOption(GPCmdParser.OPT_STR_PARTICIPATORTHRESHOLD)) {
-                participatorNumThreshold = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_PARTICIPATORTHRESHOLD));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD)) {
+                participatorNumThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
+                        GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
+                        GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
             }
 
             // number of  sub-partitions
-            if (cmd.hasOption(GPCmdParser.OPT_STR_NUMPART)) {
-                numSubPartitions = Integer.parseInt(cmd.getOptionValue(GPCmdParser.OPT_STR_NUMPART));
+            if (cmd.hasOption(GPBatchCliParser.OPT_STR_NUMPART)) {
+                numSubPartitions = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_NUMPART));
                 System.out.println(String.format(foundStr,
-                        GPCmdParser.OPT_STR_NUMPART, numSubPartitions));
+                        GPBatchCliParser.OPT_STR_NUMPART, numSubPartitions));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPCmdParser.OPT_STR_NUMPART, numSubPartitions));
+                        GPBatchCliParser.OPT_STR_NUMPART, numSubPartitions));
             }
         }
         catch(NumberFormatException e) {

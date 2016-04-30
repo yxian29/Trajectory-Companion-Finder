@@ -1,8 +1,8 @@
 package tc;
 
-import common.cmd.CmdParserBase;
+import common.cli.CliParserBase;
 
-public class TCCmdParser extends CmdParserBase {
+public class TCBatchCliParser extends CliParserBase {
 
     public static final String OPT_STR_INPUTFILE = "i";
     public static final String OPT_STR_OUTPUTDIR = "o";
@@ -13,7 +13,7 @@ public class TCCmdParser extends CmdParserBase {
     public static final String OPT_STR_SIZETHRESHOLD = "l";
     public static final String OPT_STR_NUMPART = "n";
 
-    public TCCmdParser(String[] args) {
+    public TCBatchCliParser(String[] args) {
         super(args);
 
         options.addOption(OPT_STR_HELP, false, "show help");

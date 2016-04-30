@@ -1,8 +1,8 @@
 package gp;
 
-import common.cmd.CmdParserBase;
+import common.cli.CliParserBase;
 
-public class GPCmdParser extends CmdParserBase {
+public class GPBatchCliParser extends CliParserBase {
 
     public static final String OPT_STR_INPUTFILE = "i";
     public static final String OPT_STR_OUTPUTDIR = "o";
@@ -14,7 +14,7 @@ public class GPCmdParser extends CmdParserBase {
     public static final String OPT_STR_PARTICIPATORTHRESHOLD = "mp";
     public static final String OPT_STR_NUMPART = "n";
 
-    public GPCmdParser(String[] args) {
+    public GPBatchCliParser(String[] args) {
         super(args);
 
         options.addOption(OPT_STR_INPUTFILE, true, "input file (required)");

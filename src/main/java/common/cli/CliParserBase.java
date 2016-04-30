@@ -1,12 +1,12 @@
-package common.cmd;
+package common.cli;
 
-import tc.TCCmdParser;
+import tc.TCBatchCliParser;
 import org.apache.commons.cli.*;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class CmdParserBase {
+public class CliParserBase {
 
     public static final String OPT_STR_HELP = "h";
     public static final String OPT_STR_HELP_ALT = "help";
@@ -20,13 +20,13 @@ public class CmdParserBase {
     public static final String ANSI_PURPLE = "\u001B[35m";
     public static final String ANSI_CYAN = "\u001B[36m";
 
-    protected static final Logger log = Logger.getLogger(TCCmdParser.class.getName());
+    protected static final Logger log = Logger.getLogger(TCBatchCliParser.class.getName());
     protected String[] args = null;
     protected Options options = new Options();
     protected CommandLineParser parser = new BasicParser();
     protected CommandLine cmd = null;
 
-    public CmdParserBase(String[] args) {
+    public CliParserBase(String[] args) {
 
         this.args = args;
 
