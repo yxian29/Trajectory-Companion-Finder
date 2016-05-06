@@ -7,6 +7,7 @@ import common.geometry.*;
 import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.mapred.TextOutputFormat;
+import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
@@ -15,10 +16,10 @@ import org.apache.spark.streaming.api.java.JavaPairInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.apache.spark.streaming.kafka.KafkaUtils;
 import scala.Tuple2;
+import stc.BatchCountFunc;
 import stc.InputDStreamValueMapper;
 import stc.STCCliParser;
 import tc.*;
-
 import java.util.*;
 
 public class StreamingTCFinder {
@@ -27,8 +28,8 @@ public class StreamingTCFinder {
     private static double distanceThreshold = 0.0001;   //eps
     private static int densityThreshold = 3;            //mu
     private static int timeInterval = 50;               //T
-    private static int durationThreshold = 3;           //k
-    private static int numSubPartitions = 2;            //n
+    private static int durationThreshold = 2;           //k
+    private static int numSubPartitions = 1;            //n
     private static int sizeThreshold = 2;
     private static boolean debugMode = false;
 
@@ -51,7 +52,9 @@ public class StreamingTCFinder {
                 .setAppName("StreamingTCFinder");
         if(debugMode) sparkConf.setMaster("local[*]");
 
-        JavaStreamingContext ssc = new JavaStreamingContext(sparkConf, Durations.seconds(2));
+        int batchInterval = Integer.parseInt(propertyParser.getProperty(Config.SPARK_BATCH_INTERVAL));
+        JavaStreamingContext ssc = new JavaStreamingContext(sparkConf, Durations.seconds(batchInterval));
+        ssc.checkpoint(propertyParser.getProperty(Config.SPARK_CHECKPOINT_DIR));
 
         Set<String> topics = new HashSet(Arrays.asList(
                 propertyParser.getProperty(Config.KAFKA_TOPICS).split(",")));
@@ -65,19 +68,22 @@ public class StreamingTCFinder {
                         StringDecoder.class, StringDecoder.class,
                         kafkaParams, topics);
 
-        JavaDStream<String> lines = inputDStream.map(new InputDStreamValueMapper());
+        JavaPairDStream windowedInputRDD = inputDStream.window(Durations.seconds(batchInterval));
+        JavaDStream<String> lines = windowedInputRDD.
+                map(new InputDStreamValueMapper());
+        lines.foreach(new BatchCountFunc());
 
         // partition the entire common.data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
         JavaPairDStream<Integer, Iterable<TCPoint>> slotsRDD =
-                lines.mapToPair(new TrajectorySlotMapper(timeInterval))
-                        //.partitionBy(new HashPartitioner(numSubPartitions))
+                lines.mapToPair(new stc.TrajectorySlotMapper())
                         .groupByKey();
 
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
         JavaDStream<Tuple2<Integer, TCRegion>> subPartitionsRDD =
                 slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions)).cache();
+
         // get each point per partition
         // format: <(slotId, regionId), <objectId, point>>
         JavaPairDStream<String, Tuple2<Integer, TCPoint>> pointsRDD =
@@ -114,10 +120,13 @@ public class StreamingTCFinder {
                         .mapToPair(new SlotRemoveSubPartitionIDMapper())
                         .reduceByKey(new CoverageDensityConnectionReducer());
 
+        JavaPairDStream<Integer, Iterable<Integer>> windowedSlotConnectionRDD =
+                slotConnectionRDD.window(Durations.seconds(batchInterval * durationThreshold));
+
         // obtain trajectory companion
         // format: <{objectId}, {slotId}>
         JavaPairDStream<String, Iterable<Integer>> companionRDD =
-                slotConnectionRDD
+                windowedSlotConnectionRDD
                         .flatMapToPair(new CoverageDensityConnectionSubsetMapper(sizeThreshold))
                         .mapToPair(new CoverageDensityConnectionMapper())
                         .groupByKey()
