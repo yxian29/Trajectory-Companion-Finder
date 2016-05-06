@@ -7,7 +7,6 @@ import common.geometry.*;
 import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.mapred.TextOutputFormat;
-import org.apache.spark.Accumulator;
 import org.apache.spark.SparkConf;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
@@ -75,13 +74,13 @@ public class StreamingTCFinder {
 
         // partition the entire common.data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
-        JavaPairDStream<Integer, Iterable<TCPoint>> slotsRDD =
+        JavaPairDStream<Long, Iterable<TCPoint>> slotsRDD =
                 lines.mapToPair(new stc.TrajectorySlotMapper())
                         .groupByKey();
 
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
-        JavaDStream<Tuple2<Integer, TCRegion>> subPartitionsRDD =
+        JavaDStream<Tuple2<Long, TCRegion>> subPartitionsRDD =
                 slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions)).cache();
 
         // get each point per partition

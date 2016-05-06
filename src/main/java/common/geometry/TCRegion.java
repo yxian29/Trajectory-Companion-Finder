@@ -6,19 +6,19 @@ import java.util.*;
 public class TCRegion implements Serializable {
 
     private int _rid;   //region id
-    private int _sid;   //slot id
+    private long _sid;   //slot id
 
     private Map<Integer, TCPoint> _points = new TreeMap<>();
 
     private Map<Integer, TCPolyline> _polylines = new TreeMap<>();
 
-    public TCRegion(int rid, int sid)
+    public TCRegion(int rid, long sid)
     {
         _rid = rid;
         _sid = sid;
     }
 
-    public int getSlotId() { return _sid; }
+    public long getSlotId() { return _sid; }
 
     public int getRegionId() { return _rid; }
 

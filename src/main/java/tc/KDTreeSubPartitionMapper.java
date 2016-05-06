@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class KDTreeSubPartitionMapper implements
-        FlatMapFunction<Tuple2<Integer,Iterable<TCPoint>>, Tuple2<Integer, TCRegion>>,
+        FlatMapFunction<Tuple2<Long,Iterable<TCPoint>>, Tuple2<Long, TCRegion>>,
         Serializable
 {
     private int _numSubPartitions = 1;
@@ -24,10 +24,10 @@ public class KDTreeSubPartitionMapper implements
     }
 
     @Override
-    public Iterable<Tuple2<Integer, TCRegion>> call(Tuple2<Integer, Iterable<TCPoint>> slot) throws Exception {
+    public Iterable<Tuple2<Long, TCRegion>> call(Tuple2<Long, Iterable<TCPoint>> slot) throws Exception {
 
-        List<Tuple2<Integer, TCRegion>> regions = new ArrayList<>();
-        int slotId = slot._1();
+        List<Tuple2<Long, TCRegion>> regions = new ArrayList<>();
+        long slotId = slot._1();
         KDTree kdTree = new KDTree(_numSubPartitions);
         kdTree.buildTree(IteratorUtils.toList(slot._2().iterator()));
 

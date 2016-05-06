@@ -7,9 +7,9 @@ import scala.Tuple2;
 
 import java.io.Serializable;
 
-public class TrajectorySlotMapper implements PairFunction<String, Integer, TCPoint>, Serializable {
+public class TrajectorySlotMapper implements PairFunction<String, Long, TCPoint>, Serializable {
     @Override
-    public Tuple2<Integer, TCPoint> call(String line) throws Exception {
+    public Tuple2<Long, TCPoint> call(String line) throws Exception {
         String[] split = line.split(",");
         Integer objectId = Integer.parseInt(split[0]);
         Double x = Double.parseDouble(split[1]);
@@ -24,7 +24,7 @@ public class TrajectorySlotMapper implements PairFunction<String, Integer, TCPoi
             timestamp = Integer.parseInt(split[3]);
         }
         TCPoint point = new TCPoint(objectId, x, y, timestamp);
-        int slotId = Global.batchCount.get();
+        long slotId = Global.batchCount.get();
 
         return new Tuple2<>(slotId, point);
     }

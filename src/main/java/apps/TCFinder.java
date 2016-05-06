@@ -46,14 +46,14 @@ public class TCFinder
 
         // partition the entire common.data set into trajectory slots
         // format: <slot_id, { pi, pj,... }>
-        JavaPairRDD<Integer, Iterable<TCPoint>> slotsRDD =
+        JavaPairRDD<Long, Iterable<TCPoint>> slotsRDD =
             file.mapToPair(new TrajectorySlotMapper(timeInterval))
                     .partitionBy(new HashPartitioner(numSubPartitions))
                     .groupByKey();
 
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
-        JavaRDD<Tuple2<Integer, TCRegion>> subPartitionsRDD =
+        JavaRDD<Tuple2<Long, TCRegion>> subPartitionsRDD =
                 slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions)).cache();
 
         // get each point per partition

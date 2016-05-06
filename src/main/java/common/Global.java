@@ -1,10 +1,10 @@
 package common;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Global implements Serializable {
 
     // supper global variable to count batch jobs
-    public static AtomicInteger batchCount = new AtomicInteger();
+    public static AtomicLong batchCount = new AtomicLong();
 }
