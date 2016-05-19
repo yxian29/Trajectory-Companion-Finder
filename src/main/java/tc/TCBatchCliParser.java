@@ -28,7 +28,4 @@ public class TCBatchCliParser extends CliParserBase {
         options.addOption(OPT_STR_NUMPART, true, "number of partitions");
         options.addOption(OPT_STR_SIZETHRESHOLD, true, "size threshold");
     }
-
-
-
 }

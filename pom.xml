@@ -15,6 +15,7 @@
     <kafka.version>0.8.2.2</kafka.version>
     <spark.version>1.5.1</spark.version>
     <junit.version>3.8.1</junit.version>
+    <log4j.version>1.2.17</log4j.version>
     <build-with-dependencies>false</build-with-dependencies>
   </properties>
 
@@ -84,6 +85,11 @@
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-streaming-kafka_2.10</artifactId>
       <version>${spark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>${log4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>

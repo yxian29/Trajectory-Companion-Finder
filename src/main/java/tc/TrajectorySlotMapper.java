@@ -30,7 +30,7 @@ public class TrajectorySlotMapper implements PairFunction<String, Long, TCPoint>
             timestamp = Integer.parseInt(split[3]);
         }
         TCPoint point = new TCPoint(objectId, x, y, timestamp);
-        long slotId = (int)Math.ceil(timestamp / _slotInterval);
+        long slotId = (long)Math.ceil(timestamp / _slotInterval);
 
         return new Tuple2<>(slotId, point);
     }
