@@ -14,7 +14,7 @@ public class SubPartitionRemoveObjectIDMapper implements
     public Tuple2<String, Iterable<Integer>> call(Tuple2<String, Iterable<Integer>> input) throws Exception {
         String[] split = input._1().split(",");
         List<Integer> objectIds = IteratorUtils.toList(input._2().iterator());
-        objectIds.add(Integer.parseInt(split[1]));
+        objectIds.add(Integer.parseInt(split[2]));
         return new Tuple2(String.format("%s,%s", split[0], split[1]), objectIds);
     }
 }
