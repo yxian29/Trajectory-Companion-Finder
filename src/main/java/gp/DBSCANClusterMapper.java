@@ -5,7 +5,6 @@ import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.commons.math3.stat.clustering.DBSCANClusterer;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
 import java.util.ArrayList;
@@ -34,9 +33,6 @@ public class DBSCANClusterMapper
             List<Cluster> clusters = dbscan.cluster(points);
             for(Cluster c : clusters) {
                 list.add(new Tuple2<>(key, c));
-
-                // TODO: Assume only one cluster per timestamp for now. TO BE REMOVED
-                break;
             }
 
             return list;
