@@ -54,7 +54,7 @@ public class TCFinder
         // partition each slot into sub-partitions
         // format: <slot_id, TCRegion>
         JavaRDD<Tuple2<Long, TCRegion>> subPartitionsRDD =
-                slotsRDD.flatMap(new KDTreeSubPartitionMapper(numSubPartitions)).cache();
+                slotsRDD.flatMap(new SpaceSubPartitionMapper(numSubPartitions)).cache();
 
         // get each point per partition
         // format: <(slotId, regionId), <objectId, point>>
