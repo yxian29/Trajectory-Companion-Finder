@@ -33,8 +33,8 @@ public class CoverageDensityConnectionSubsetMapper implements
         List<Set<Integer>> result = new ArrayList();
 
         int numOfSubsets = 1 << input.size();
-        if(numOfSubsets > 31) // Integer.MAX_VALUE = 2^32 - 1
-            numOfSubsets = 31;
+        if(numOfSubsets > 1L << 32 - 1) // Integer.MAX_VALUE = 2^32 - 1
+            numOfSubsets = Integer.MAX_VALUE;
 
         for(int i=0; i< numOfSubsets; i++) {
             int pos = 0;
