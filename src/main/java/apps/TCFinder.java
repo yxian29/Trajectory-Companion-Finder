@@ -1,5 +1,7 @@
 package apps;
 import org.apache.spark.HashPartitioner;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.PairFunction;
 import tc.*;
 import common.cli.CliParserBase;
 import common.geometry.*;
@@ -69,9 +71,9 @@ public class TCFinder
         // get density reachable per sub partition
         // format: <(slotId, regionId, objectId), {objectId}>
         JavaPairRDD<String, Iterable<Integer>> densityReachableRDD =
-                pointsRDD.join(polylinesRDD)
-                .flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
-                .groupByKey().filter(new CoverageDensityReachableFilter(densityThreshold));
+                pointsRDD.cartesian(polylinesRDD)
+                .flatMapToPair(new tc.CoverageDensityReachableMapper(distanceThreshold))
+                        .groupByKey().filter(new CoverageDensityReachableFilter(densityThreshold));
 
         // remove objectId from key
         // format: <(slotId, regionId), {objectId}>

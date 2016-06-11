@@ -8,7 +8,11 @@ import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.function.Function;
+import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.streaming.Durations;
+import org.apache.spark.streaming.Time;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaPairInputDStream;
@@ -90,14 +94,22 @@ public class StreamingTCFinder {
 
         // get all polylines per partition
         // format: <(slotId, regionId), {<objectId, polyline>}
-        JavaPairDStream<String, Map<Integer, TCPolyline>> polylinesRDD =
+        final JavaPairDStream<String, Map<Integer, TCPolyline>> polylinesRDD =
                 subPartitionsRDD.mapToPair(new SubPartitionToPolylinesMapper());
 
         // get density reachable per sub partition
         // format: <(slotId, regionId, objectId), {objectId}>
         JavaPairDStream<String, Iterable<Integer>> densityReachableRDD =
+                pointsRDD.transformToPair(new Function2<JavaPairRDD<String, Tuple2<Integer, TCPoint>>, Time, JavaPairRDD<String, Iterable<Integer>>>() {
+                    @Override
+                    public JavaPairRDD<String, Iterable<Integer>> call(JavaPairRDD<String, Tuple2<Integer, TCPoint>> stringTuple2JavaPairRDD, Time time) throws Exception {
+                        return null;
+                    }
+                });
+
+
                 pointsRDD.join(polylinesRDD)
-                        .flatMapToPair(new CoverageDensityReachableMapper(distanceThreshold))
+                        .flatMapToPair(new stc.CoverageDensityReachableMapper(distanceThreshold))
                         .groupByKey().filter(new CoverageDensityReachableFilter(densityThreshold));
 
         // remove objectId from key

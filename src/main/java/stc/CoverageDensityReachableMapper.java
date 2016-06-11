@@ -1,8 +1,6 @@
-package tc;
+package stc;
 
-import common.geometry.TCLine;
-import common.geometry.TCPoint;
-import common.geometry.TCPolyline;
+import common.geometry.*;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 
@@ -12,10 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 public class CoverageDensityReachableMapper
-    implements PairFlatMapFunction<Tuple2<Tuple2<String,
-        Tuple2<Integer, TCPoint>>, Tuple2<String, Map<Integer, TCPolyline>>>,
-        String, Integer>
-{
+        implements PairFlatMapFunction<Tuple2<String,
+                Tuple2<Tuple2<Integer,TCPoint>,Map<Integer,TCPolyline>>>,
+                String, Integer> {
 
     private double _distanceThreshold = 0.0;
 
@@ -26,9 +23,9 @@ public class CoverageDensityReachableMapper
 
     @Override
     public Iterable<Tuple2<String, Integer>> call(
-            Tuple2<Tuple2<String, Tuple2<Integer, TCPoint>>, Tuple2<String, Map<Integer, TCPolyline>>> input) throws Exception {
+            Tuple2<String, Tuple2<Tuple2<Integer, TCPoint>, Map<Integer, TCPolyline>>> input) throws Exception {
 
-        Tuple2<Integer, TCPoint> pointTuple = input._1()._2();
+        Tuple2<Integer, TCPoint> pointTuple = input._2()._1();
         Map<Integer, TCPolyline> polylineMap = input._2()._2();
         String key = String.format("%s,%s", input._1(), pointTuple._1());
 
