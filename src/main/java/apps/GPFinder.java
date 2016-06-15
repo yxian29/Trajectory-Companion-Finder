@@ -1,5 +1,6 @@
 package apps;
 
+import common.data.DBSCANCluster;
 import gp.*;
 import common.cli.CliParserBase;
 import common.geometry.*;
@@ -9,9 +10,12 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
 
+import java.util.Iterator;
 import java.util.List;
 
 public class GPFinder {
@@ -44,21 +48,21 @@ public class GPFinder {
         if (debugMode) sparkConf.setMaster("local[*]");
 
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath);
+        JavaRDD<String> file = ctx.textFile(inputFilePath).repartition(numSubPartitions);
 
         // find snapshot per timestamp and data partition
         // format: <timestamp, {point}>
         JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD =
-                file.mapToPair(new SnapshotMapper()).groupByKey().repartition(numSubPartitions);
+                file.mapToPair(new SnapshotMapper()).groupByKey();
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
         // format: <timestamp, {cluster}>
-        JavaPairRDD<Integer, Cluster> clusterRDD =
+        JavaPairRDD<Integer, DBSCANCluster> clusterRDD =
                 snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
-
+        
         // prepare to broadcast the full cluster list
         // TODO: investigate the best practice instead of collect()
-        Broadcast<List<Tuple2<Integer, Cluster>>> clusterBroadcast =
+        Broadcast<List<Tuple2<Integer, DBSCANCluster>>> clusterBroadcast =
                 ctx.broadcast(clusterRDD.sortByKey().collect());
 
         JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
