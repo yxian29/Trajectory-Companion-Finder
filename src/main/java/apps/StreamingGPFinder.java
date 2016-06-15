@@ -3,6 +3,7 @@ package apps;
 import common.cli.CliParserBase;
 import common.cli.Config;
 import common.cli.PropertyFileParser;
+import common.data.DBSCANCluster;
 import common.geometry.TCPoint;
 import gp.*;
 import kafka.serializer.StringDecoder;
@@ -83,18 +84,18 @@ public class StreamingGPFinder {
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
         // format: <timestamp, {cluster}>
-        JavaPairDStream<Integer, Cluster> clusterDStream =
+        JavaPairDStream<Integer, DBSCANCluster> clusterDStream =
                 snapshotDStream.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
 
-        clusterDStream.foreachRDD(new Function2<JavaPairRDD<Integer, Cluster>, Time, Void>() {
+        clusterDStream.foreachRDD(new Function2<JavaPairRDD<Integer, DBSCANCluster>, Time, Void>() {
             @Override
-            public Void call(JavaPairRDD<Integer, Cluster> clusterRDD, Time time) throws Exception {
+            public Void call(JavaPairRDD<Integer, DBSCANCluster> clusterRDD, Time time) throws Exception {
 
                 // JavaStreamingContext cannot be seralized !
 //                Broadcast<List<Tuple2<Integer, Cluster>>> clusterBroadcast =
 //                        ssc.sparkContext().broadcast(clusterRDD.sortByKey().collect());
 
-                List<Tuple2<Integer, Cluster>> list = new ArrayList<>();
+                List<Tuple2<Integer, DBSCANCluster>> list = new ArrayList<>();
                 list.addAll(clusterRDD.sortByKey().collect());
 
                 JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
