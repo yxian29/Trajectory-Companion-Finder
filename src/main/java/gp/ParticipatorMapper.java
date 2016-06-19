@@ -15,7 +15,7 @@ public class ParticipatorMapper implements
     }
 
     public Tuple2<Long, Iterable<Integer>> apply(Tuple2<String, Iterable<Integer>> input) {
-        String[] split = input._1().split(",");
+        String[] split = input._1().split("-");
         long crowdId = Integer.parseInt(split[0]);
         int objectId = Integer.parseInt(split[1]);
         List<Integer> participators = IteratorUtils.toList(input._2().iterator());

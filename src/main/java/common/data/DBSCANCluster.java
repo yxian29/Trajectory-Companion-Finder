@@ -5,12 +5,20 @@ import org.apache.commons.math3.stat.clustering.Cluster;
 import java.io.Serializable;
 import java.util.List;
 
-public class DBSCANCluster implements Serializable {
+public class DBSCANCluster implements Serializable, Comparable<DBSCANCluster> {
 
     public Cluster _cluster;
-    public DBSCANCluster(Cluster cluster)
+    private int _timestamp;
+
+    public DBSCANCluster(int timestamp, Cluster cluster)
     {
+        _timestamp = timestamp;
         _cluster = cluster;
+    }
+
+    public Integer getTimeStamp()
+    {
+        return _timestamp;
     }
 
     public TCPoint centroid() {
@@ -26,5 +34,10 @@ public class DBSCANCluster implements Serializable {
             centroidY += knot.getY();
         }
         return new TCPoint(0, centroidX / size, centroidY / size, 0);
+    }
+
+    @Override
+    public int compareTo(DBSCANCluster o) {
+        return this.getTimeStamp().compareTo(o.getTimeStamp());
     }
 }

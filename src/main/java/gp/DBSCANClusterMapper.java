@@ -28,12 +28,12 @@ public class DBSCANClusterMapper
         public Iterable<Tuple2<Integer, DBSCANCluster>> call(Tuple2<Integer, Iterable<TCPoint>> input) throws Exception {
 
             List<Tuple2<Integer, DBSCANCluster>> list = new ArrayList<>();
-            int key = input._1();
+            int timestamp = input._1();
             Collection<TCPoint> points = IteratorUtils.toList(input._2().iterator());
             DBSCANClusterer dbscan = new DBSCANClusterer(_distanceThreshold, _densityThreshold);
             List<Cluster> clusters = dbscan.cluster(points);
             for(Cluster c : clusters) {
-                list.add(new Tuple2<>(key, new DBSCANCluster(c)));
+                list.add(new Tuple2<>(timestamp, new DBSCANCluster(timestamp, c)));
             }
 
             return list;

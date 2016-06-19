@@ -1,18 +1,9 @@
 package gp;
 
 import common.cli.CliParserBase;
+import static gp.GPConstants.*;
 
 public class GPBatchCliParser extends CliParserBase {
-
-    public static final String OPT_STR_INPUTFILE = "i";
-    public static final String OPT_STR_OUTPUTDIR = "o";
-    public static final String OPT_STR_DISTTHRESHOLD = "e";
-    public static final String OPT_STR_DENTHRESHOLD = "u";
-    public static final String OPT_STR_TIMETHRESHOLD = "dt";
-    public static final String OPT_STR_LIFETIMETHRESHOLD = "kc";
-    public static final String OPT_STR_CLUSTERNUMTHRESHOLD = "kp";
-    public static final String OPT_STR_PARTICIPATORTHRESHOLD = "mp";
-    public static final String OPT_STR_NUMPART = "n";
 
     public GPBatchCliParser(String[] args) {
         super(args);

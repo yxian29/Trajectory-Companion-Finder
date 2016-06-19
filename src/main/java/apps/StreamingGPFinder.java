@@ -3,12 +3,13 @@ package apps;
 import common.cli.CliParserBase;
 import common.cli.Config;
 import common.cli.PropertyFileParser;
+import common.data.Crowd;
 import common.data.DBSCANCluster;
+import common.data.UserData;
 import common.geometry.TCPoint;
 import gp.*;
 import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -20,7 +21,6 @@ import org.apache.spark.streaming.api.java.JavaPairInputDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.apache.spark.streaming.kafka.KafkaUtils;
 import scala.Tuple2;
-import sgp.ClusterJoinMapper;
 import sgp.SGPCliParser;
 import stc.BatchCountFunc;
 import stc.InputDStreamValueMapper;
@@ -48,7 +48,9 @@ public class StreamingGPFinder {
         if(parser.getCmd() == null) {
             System.exit(1);
         }
-        initParams(parser);
+
+        final UserData data = new UserData();
+        initParams(parser, data);
 
         // setup the property parser
         PropertyFileParser propertyParser = new PropertyFileParser(args[0]);
@@ -91,37 +93,16 @@ public class StreamingGPFinder {
             @Override
             public Void call(JavaPairRDD<Integer, DBSCANCluster> clusterRDD, Time time) throws Exception {
 
-                // JavaStreamingContext cannot be seralized !
-//                Broadcast<List<Tuple2<Integer, Cluster>>> clusterBroadcast =
-//                        ssc.sparkContext().broadcast(clusterRDD.sortByKey().collect());
-
-                List<Tuple2<Integer, DBSCANCluster>> list = new ArrayList<>();
-                list.addAll(clusterRDD.sortByKey().collect());
-
-                JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
-                        clusterRDD.flatMapToPair(new ClusterJoinMapper(list,
-                                timeInterval, densityThreshold, distanceThreshold));
-
                 // group clusters by timestamp to form a crowd, given each crowd
                 // an unique id
-                JavaPairRDD<Iterable<Tuple2<Integer, Cluster>>, Long> crowdRDD =
-                        clusterPairRDD.groupByKey()
-                                .values()
-                                .filter(new CrowdTimeIntervalFilter(lifetimeThreshold))
-                                .zipWithUniqueId().cache();
+                // format: <<timestamp, crowd>, crowdId>
+                JavaPairRDD<Tuple2<Integer, Crowd>, Long> crowdRDD =
+                        GPQuery.getCrowdRDDByRangePartitionJoin(clusterRDD, data);
 
                 // find participator in a given crowd
                 // format: <crowdId, {participator}>
-                JavaPairRDD<Long, Iterable<Integer>> parRDD =
-                        crowdRDD.flatMapToPair(new CrowdObjectToTimestampMapper())
-                                // <-: <(crowdId, objectId), {timestamp}>
-                                .groupByKey()
-                                // <-: <crowdId, {timestamp}>
-                                .mapToPair(new ParticipatorMapper())
-                                // <-: <crowdId, {participator}>
-                                .filter(new ParticipatorFilter(clusterNumThreshold))
-                                // <-: <crowdId, {participator}>
-                                .reduceByKey(new ParticipatorReducer());
+                JavaPairRDD<Long, Iterable<Integer>> participatorRDD =
+                        GPQuery.getParticipatorRDD(crowdRDD, data);
 
                 // convert crowd into the same format as participator
                 // format: <crowdId, {(objectId, timestamp)}>
@@ -131,18 +112,12 @@ public class StreamingGPFinder {
                 // discover gatherings
                 // format: <crowdId, {(timestamp, {objectId})}>
                 JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> gatheringRDD =
-                        crowdToObjectTimestampRDD.join(parRDD)
-                                // <-: <crowdId, {(objectId, timestamp)}, {participator}>
-                                .filter(new GatheringFilter(participatorNumThreshold))
-                                // <-: <crowdId, {(objectId, timestamp)}, {participator}>
-                                .mapToPair(new GatheringMapper())
-                                // <-: <crowdId, (timestamp, objectId)>
-                                .groupByKey();
-                // <-: <crowdId, {(timestamp, {objectId})}>
+                        GPQuery.getGatheringRDD(crowdToObjectTimestampRDD, participatorRDD,
+                                data);
 
-//                if(debugMode)
-//                    gatheringRDD.take(1);
-//                else
+                if(outputDir.isEmpty())
+                    gatheringRDD.take(1);
+                else
                     gatheringRDD.saveAsTextFile(outputDir);
 
                 return null;
@@ -153,7 +128,7 @@ public class StreamingGPFinder {
         ssc.awaitTermination();
     }
 
-    private static void initParams(SGPCliParser parser)
+    private static void initParams(SGPCliParser parser, UserData data)
     {
         String foundStr = CliParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CliParserBase.ANSI_RESET;
         String notFoundStr = CliParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + CliParserBase.ANSI_RESET;
@@ -244,6 +219,17 @@ public class StreamingGPFinder {
                 System.out.println(String.format(notFoundStr,
                         SGPCliParser.OPT_STR_NUMPART, numSubPartitions));
             }
+
+            // default user data
+            data.add(GPConstants.OPT_STR_OUTPUTDIR, outputDir);
+            data.add(GPBatchCliParser.OPT_STR_DEBUG, debugMode);
+            data.add(GPConstants.OPT_STR_DISTTHRESHOLD, distanceThreshold);
+            data.add(GPConstants.OPT_STR_DENTHRESHOLD, densityThreshold);
+            data.add(GPConstants.OPT_STR_TIMETHRESHOLD, timeInterval);
+            data.add(GPConstants.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold);
+            data.add(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold);
+            data.add(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold);
+            data.add(GPConstants.OPT_STR_NUMPART, numSubPartitions);
         }
         catch(NumberFormatException e) {
             System.err.println(String.format("Error parsing argument. Exception: %s", e.getMessage()));

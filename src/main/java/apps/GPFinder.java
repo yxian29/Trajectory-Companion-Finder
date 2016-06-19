@@ -1,22 +1,18 @@
 package apps;
 
+import common.data.UserData;
+import common.data.Crowd;
 import common.data.DBSCANCluster;
 import gp.*;
 import common.cli.CliParserBase;
 import common.geometry.*;
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.math3.stat.clustering.Cluster;
+import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
-import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
-
-import java.util.Iterator;
-import java.util.List;
 
 public class GPFinder {
 
@@ -35,60 +31,41 @@ public class GPFinder {
 
         GPBatchCliParser parser = new GPBatchCliParser(args);
         parser.parse();
-
         if (parser.getCmd() == null)
             System.exit(0);
 
-        initParams(parser);
+        UserData data = new UserData();
+        initParams(parser, data);
 
         SparkConf sparkConf = new SparkConf().
-                setAppName("gathering_pattern_finder");
+                setAppName("GPFinder");
 
         // force to local mode if it is debug
         if (debugMode) sparkConf.setMaster("local[*]");
 
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
-        JavaRDD<String> file = ctx.textFile(inputFilePath).repartition(numSubPartitions);
+        JavaRDD<String> file = ctx.textFile(inputFilePath);
 
         // find snapshot per timestamp and data partition
         // format: <timestamp, {point}>
         JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD =
-                file.mapToPair(new SnapshotMapper()).groupByKey();
+                GPQuery.getSnapshotRDD(file, data);
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
         // format: <timestamp, {cluster}>
         JavaPairRDD<Integer, DBSCANCluster> clusterRDD =
-                snapshotRDD.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
-        
-        // prepare to broadcast the full cluster list
-        // TODO: investigate the best practice instead of collect()
-        Broadcast<List<Tuple2<Integer, DBSCANCluster>>> clusterBroadcast =
-                ctx.broadcast(clusterRDD.sortByKey().collect());
-
-        JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
-                clusterRDD.flatMapToPair(new ClusterMapsideJoinMapper(clusterBroadcast,
-                        timeInterval, densityThreshold, distanceThreshold));
+                GPQuery.getClusterRDD(snapshotRDD, data);
 
         // group clusters by timestamp to form a crowd, given each crowd
         // an unique id
-        JavaPairRDD<Iterable<Tuple2<Integer, Cluster>>, Long> crowdRDD =
-                clusterPairRDD.groupByKey()
-                        .values()
-                        .filter(new CrowdTimeIntervalFilter(lifetimeThreshold))
-                        .zipWithUniqueId().cache();
+        // format: <<timestamp, crowd>, crowdId>
+        JavaPairRDD<Tuple2<Integer, Crowd>, Long> crowdRDD =
+                GPQuery.getCrowdRDDByRangePartitionJoin(clusterRDD, data);
 
-        // find participator in a given crowd
-        // format: <crowdId, {participator}>
-        JavaPairRDD<Long, Iterable<Integer>> parRDD =
-                crowdRDD.flatMapToPair(new CrowdObjectToTimestampMapper())
-                        // <-: <(crowdId, objectId), {timestamp}>
-                        .groupByKey()
-                        // <-: <crowdId, {timestamp}>
-                        .mapToPair(new ParticipatorMapper())
-                        // <-: <crowdId, {participator}>
-                        .filter(new ParticipatorFilter(clusterNumThreshold))
-                        // <-: <crowdId, {participator}>
-                        .reduceByKey(new ParticipatorReducer());
+//        // find participator in a given crowd
+//        // format: <crowdId, {participator}>
+        JavaPairRDD<Long, Iterable<Integer>> participatorRDD =
+                GPQuery.getParticipatorRDD(crowdRDD, data);
 
         // convert crowd into the same format as participator
         // format: <crowdId, {(objectId, timestamp)}>
@@ -98,24 +75,19 @@ public class GPFinder {
         // discover gatherings
         // format: <crowdId, {(timestamp, {objectId})}>
         JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> gatheringRDD =
-                crowdToObjectTimestampRDD.join(parRDD)
-                        // <-: <crowdId, {(objectId, timestamp)}, {participator}>
-                        .filter(new GatheringFilter(participatorNumThreshold))
-                        // <-: <crowdId, {(objectId, timestamp)}, {participator}>
-                        .mapToPair(new GatheringMapper())
-                        // <-: <crowdId, (timestamp, objectId)>
-                        .groupByKey();
-                        // <-: <crowdId, {(timestamp, {objectId})}>
+                GPQuery.getGatheringRDD(crowdToObjectTimestampRDD, participatorRDD,
+                data);
 
-        if(debugMode)
+        if(outputDir.isEmpty())
             gatheringRDD.take(1);
         else
-            gatheringRDD.saveAsTextFile(outputDir);
+            gatheringRDD.saveAsHadoopFile(outputDir,
+                    String.class, String.class, TextOutputFormat.class);
 
         ctx.stop();
     }
 
-    private static void initParams(GPBatchCliParser parser)
+    private static void initParams(GPBatchCliParser parser, UserData data)
     {
         String foundStr = CliParserBase.ANSI_GREEN + "param -%s is set. Use custom value: %s" + CliParserBase.ANSI_RESET;
         String notFoundStr = CliParserBase.ANSI_RED + "param -%s not found. Use default value: %s" + CliParserBase.ANSI_RESET;
@@ -124,16 +96,17 @@ public class GPFinder {
         try {
 
             // input
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_INPUTFILE)) {
-                inputFilePath = cmd.getOptionValue(GPBatchCliParser.OPT_STR_INPUTFILE);
+            if (cmd.hasOption(GPConstants.OPT_STR_INPUTFILE)) {
+                inputFilePath = cmd.getOptionValue(GPConstants.OPT_STR_INPUTFILE);
+
             } else {
                 System.err.println("Input file not defined. Aborting...");
                 parser.help();
             }
 
             // output
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_OUTPUTDIR)) {
-                outputDir = cmd.getOptionValue(GPBatchCliParser.OPT_STR_OUTPUTDIR);
+            if (cmd.hasOption(GPConstants.OPT_STR_OUTPUTDIR)) {
+                outputDir = cmd.getOptionValue(GPConstants.OPT_STR_OUTPUTDIR);
             } else {
                 System.err.println("Output directory not defined. Aborting...");
                 parser.help();
@@ -146,74 +119,86 @@ public class GPFinder {
             }
 
             // distance threshold
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_DISTTHRESHOLD)) {
-                distanceThreshold = Double.parseDouble(cmd.getOptionValue(GPBatchCliParser.OPT_STR_DISTTHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_DISTTHRESHOLD)) {
+                distanceThreshold = Double.parseDouble(cmd.getOptionValue(GPConstants.OPT_STR_DISTTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        GPConstants.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_DISTTHRESHOLD, distanceThreshold));
+                        GPConstants.OPT_STR_DISTTHRESHOLD, distanceThreshold));
             }
 
             // density threshold
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_DENTHRESHOLD)) {
-                densityThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_DENTHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_DENTHRESHOLD)) {
+                densityThreshold = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_DENTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        GPConstants.OPT_STR_DENTHRESHOLD, densityThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_DENTHRESHOLD, densityThreshold));
+                        GPConstants.OPT_STR_DENTHRESHOLD, densityThreshold));
             }
 
             // time interval
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_TIMETHRESHOLD)) {
-                timeInterval = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_TIMETHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_TIMETHRESHOLD)) {
+                timeInterval = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_TIMETHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_TIMETHRESHOLD, timeInterval));
+                        GPConstants.OPT_STR_TIMETHRESHOLD, timeInterval));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_TIMETHRESHOLD, timeInterval));
+                        GPConstants.OPT_STR_TIMETHRESHOLD, timeInterval));
             }
 
             // life time
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD)) {
-                lifetimeThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_LIFETIMETHRESHOLD)) {
+                lifetimeThreshold = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_LIFETIMETHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
+                        GPConstants.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
+                        GPConstants.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold));
             }
 
             // cluster number threshold
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD)) {
-                clusterNumThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD)) {
+                clusterNumThreshold = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
+                        GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
+                        GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold));
             }
 
             // participator number threshold
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD)) {
-                participatorNumThreshold = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD));
+            if (cmd.hasOption(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD)) {
+                participatorNumThreshold = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
+                        GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
+                        GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold));
             }
 
             // number of  sub-partitions
-            if (cmd.hasOption(GPBatchCliParser.OPT_STR_NUMPART)) {
-                numSubPartitions = Integer.parseInt(cmd.getOptionValue(GPBatchCliParser.OPT_STR_NUMPART));
+            if (cmd.hasOption(GPConstants.OPT_STR_NUMPART)) {
+                numSubPartitions = Integer.parseInt(cmd.getOptionValue(GPConstants.OPT_STR_NUMPART));
                 System.out.println(String.format(foundStr,
-                        GPBatchCliParser.OPT_STR_NUMPART, numSubPartitions));
+                        GPConstants.OPT_STR_NUMPART, numSubPartitions));
             } else {
                 System.out.println(String.format(notFoundStr,
-                        GPBatchCliParser.OPT_STR_NUMPART, numSubPartitions));
+                        GPConstants.OPT_STR_NUMPART, numSubPartitions));
             }
+
+            // default user data
+            data.add(GPConstants.OPT_STR_INPUTFILE, inputFilePath);
+            data.add(GPConstants.OPT_STR_OUTPUTDIR, outputDir);
+            data.add(GPBatchCliParser.OPT_STR_DEBUG, debugMode);
+            data.add(GPConstants.OPT_STR_DISTTHRESHOLD, distanceThreshold);
+            data.add(GPConstants.OPT_STR_DENTHRESHOLD, densityThreshold);
+            data.add(GPConstants.OPT_STR_TIMETHRESHOLD, timeInterval);
+            data.add(GPConstants.OPT_STR_LIFETIMETHRESHOLD, lifetimeThreshold);
+            data.add(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold);
+            data.add(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold);
+            data.add(GPConstants.OPT_STR_NUMPART, numSubPartitions);
         }
         catch(NumberFormatException e) {
             System.err.println(String.format("Error parsing argument. Exception: %s", e.getMessage()));
