@@ -1,7 +1,7 @@
 package tc;
 
-import common.geometry.TCPolyline;
-import common.geometry.TCRegion;
+import common.data.TCPolyline;
+import common.data.TCRegion;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 

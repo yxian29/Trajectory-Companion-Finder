@@ -1,6 +1,5 @@
 package common.data;
 
-import common.geometry.TCPoint;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 

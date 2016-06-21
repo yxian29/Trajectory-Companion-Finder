@@ -6,7 +6,7 @@ import common.cli.PropertyFileParser;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
 import common.data.UserData;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import gp.*;
 import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;

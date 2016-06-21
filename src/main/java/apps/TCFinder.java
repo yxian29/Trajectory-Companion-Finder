@@ -1,8 +1,10 @@
 package apps;
+import common.data.TCPoint;
+import common.data.TCPolyline;
+import common.data.TCRegion;
 import org.apache.spark.HashPartitioner;
 import tc.*;
 import common.cli.CliParserBase;
-import common.geometry.*;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.spark.SparkConf;

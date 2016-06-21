@@ -2,7 +2,7 @@ package gp;
 
 import common.data.Crowd;
 import common.data.DBSCANCluster;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import junit.framework.TestCase;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.math3.stat.clustering.Cluster;
@@ -12,7 +12,6 @@ import scala.Tuple2;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 public class CrowdCandidatesMapperTest extends TestCase {
 

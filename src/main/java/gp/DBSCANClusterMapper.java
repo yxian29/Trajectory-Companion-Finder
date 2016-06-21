@@ -1,7 +1,7 @@
 package gp;
 
 import common.data.DBSCANCluster;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.commons.math3.stat.clustering.DBSCANClusterer;

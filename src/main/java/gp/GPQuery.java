@@ -4,8 +4,7 @@ import common.data.UserData;
 import common.utils.IntOrdering;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
-import common.geometry.TCPoint;
-import org.apache.spark.HashPartitioner;
+import common.data.TCPoint;
 import org.apache.spark.RangePartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -137,6 +136,14 @@ public class GPQuery {
 //        JavaPairRDD<Tuple2<Integer, Cluster>, Tuple2<Integer, Cluster>> clusterPairRDD =
 //                clusterRDD.flatMapToPair(new ClusterMapsideJoinMapper(clusterBroadcast,
 //                        timeInterval, densityThreshold, distanceThreshold));
+//    }
+
+//    public static JavaPairRDD<Tuple2<Integer, Crowd>, Long> getCrowdRDDByMapSideJoin(
+//            JavaSparkContext sc, JavaPairRDD<Integer, DBSCANCluster> clusterRDD, UserData data)
+//    {
+//        // prepare to broadcast the full cluster list
+//        Broadcast<List<Tuple2<Integer, DBSCANCluster>>> boardcastClusters =
+//                sc.broadcast(clusterRDD.sortByKey().collect());
 //    }
 
     public static JavaPairRDD<Long, Iterable<Integer>> getParticipatorRDD(

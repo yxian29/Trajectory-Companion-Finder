@@ -1,5 +1,4 @@
 package common.data;
-import common.geometry.TCPoint;
 import org.apache.commons.math3.stat.clustering.Cluster;
 
 import java.io.Serializable;

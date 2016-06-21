@@ -1,4 +1,4 @@
-package common.geometry;
+package common.data;
 
 import org.apache.commons.math3.stat.clustering.Clusterable;
 

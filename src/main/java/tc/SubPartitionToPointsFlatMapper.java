@@ -1,7 +1,7 @@
 package tc;
 
-import common.geometry.TCPoint;
-import common.geometry.TCRegion;
+import common.data.TCPoint;
+import common.data.TCRegion;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 

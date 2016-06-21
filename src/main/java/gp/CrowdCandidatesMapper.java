@@ -1,7 +1,7 @@
 package gp;
 
 import common.data.Crowd;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.spark.api.java.function.Function2;
 import common.data.DBSCANCluster;
 

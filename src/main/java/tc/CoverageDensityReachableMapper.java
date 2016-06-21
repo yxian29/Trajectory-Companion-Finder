@@ -1,11 +1,9 @@
 package tc;
 
-import com.google.common.base.Optional;
-import common.geometry.TCLine;
-import common.geometry.TCPoint;
-import common.geometry.TCPolyline;
+import common.data.TCLine;
+import common.data.TCPoint;
+import common.data.TCPolyline;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
-import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;
 
 import java.awt.geom.Line2D;

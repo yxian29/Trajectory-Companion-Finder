@@ -1,7 +1,5 @@
 package common.data;
 
-import common.geometry.Coordinate2D;
-import common.geometry.TCPoint;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.math3.util.Precision;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;

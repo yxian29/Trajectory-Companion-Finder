@@ -1,4 +1,4 @@
-package common.geometry;
+package common.data;
 
 import java.io.Serializable;
 import java.util.ArrayList;

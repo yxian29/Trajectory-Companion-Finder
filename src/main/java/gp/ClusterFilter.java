@@ -1,6 +1,6 @@
 package gp;
 
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.commons.math3.stat.clustering.Cluster;
 import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;

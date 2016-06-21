@@ -1,7 +1,7 @@
 package gp;
 
-import common.geometry.TCPoint;
-import common.geometry.TCRegion;
+import common.data.TCPoint;
+import common.data.TCRegion;
 import org.apache.commons.math3.util.Precision;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import scala.Tuple2;

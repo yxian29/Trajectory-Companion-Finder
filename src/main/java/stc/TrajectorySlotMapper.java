@@ -1,7 +1,7 @@
 package stc;
 
 import common.Global;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 

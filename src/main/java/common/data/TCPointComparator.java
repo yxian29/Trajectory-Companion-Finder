@@ -1,6 +1,4 @@
-package common.geometry;
-
-import common.geometry.TCPoint;
+package common.data;
 
 import java.util.Comparator;
 

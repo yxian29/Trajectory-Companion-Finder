@@ -1,11 +1,11 @@
 package apps;
 
+import common.data.TCPoint;
 import common.data.UserData;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
 import gp.*;
 import common.cli.CliParserBase;
-import common.geometry.*;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.spark.SparkConf;

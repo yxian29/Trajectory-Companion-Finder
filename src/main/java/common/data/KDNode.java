@@ -1,8 +1,5 @@
 package common.data;
 
-import common.geometry.Coordinate2D;
-import common.geometry.TCPoint;
-
 import java.util.ArrayList;
 import java.util.List;
 

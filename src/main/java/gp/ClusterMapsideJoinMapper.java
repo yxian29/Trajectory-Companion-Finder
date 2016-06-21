@@ -1,10 +1,8 @@
 package gp;
 
 import common.data.DBSCANCluster;
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.commons.math3.stat.clustering.Cluster;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import scala.Tuple2;

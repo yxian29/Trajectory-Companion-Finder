@@ -2,8 +2,7 @@ package gp;
 
 import common.data.Crowd;
 import common.data.DBSCANCluster;
-import common.geometry.TCPoint;
-import org.apache.commons.math3.stat.clustering.Cluster;
+import common.data.TCPoint;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import scala.Tuple2;
 

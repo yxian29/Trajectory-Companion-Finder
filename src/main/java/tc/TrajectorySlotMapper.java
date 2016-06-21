@@ -1,6 +1,6 @@
 package tc;
 
-import common.geometry.TCPoint;
+import common.data.TCPoint;
 import org.apache.spark.api.java.function.PairFunction;
 import java.io.Serializable;
 import scala.Tuple2;
