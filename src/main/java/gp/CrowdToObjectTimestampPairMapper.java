@@ -10,17 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CrowdToObjectTimestampPairMapper implements
-        PairFlatMapFunction<Tuple2<Tuple2<Integer, Crowd>, Long>,
+        PairFlatMapFunction<Tuple2<Tuple2<String, Crowd>, Long>,
                 Long, Iterable<Tuple2<Integer, Integer>>>
 {
     @Override
     public Iterable<Tuple2<Long, Iterable<Tuple2<Integer, Integer>>>> call(
-            Tuple2<Tuple2<Integer, Crowd>, Long> input) throws Exception {
+            Tuple2<Tuple2<String, Crowd>, Long> input) throws Exception {
         return apply(input);
     }
 
     public Iterable<Tuple2<Long, Iterable<Tuple2<Integer, Integer>>>> apply(
-            Tuple2<Tuple2<Integer, Crowd>, Long> input) {
+            Tuple2<Tuple2<String, Crowd>, Long> input) {
         List<Tuple2<Long, Iterable<Tuple2<Integer, Integer>>>> result = new ArrayList();
 
         long crowdId = input._2();

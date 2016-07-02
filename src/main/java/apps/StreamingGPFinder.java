@@ -7,9 +7,11 @@ import common.data.Crowd;
 import common.data.DBSCANCluster;
 import common.data.UserData;
 import common.data.TCPoint;
+import common.partition.FixedGridPartition;
 import gp.*;
 import kafka.serializer.StringDecoder;
 import org.apache.commons.cli.CommandLine;
+import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function2;
@@ -81,26 +83,39 @@ public class StreamingGPFinder {
 
         // find snapshot per timestamp and data partition
         // format: <timestamp, {point}>
-        JavaPairDStream<Integer, Iterable<TCPoint>> snapshotDStream =
-                lines.mapToPair(new SnapshotMapper()).groupByKey();
+        JavaPairDStream<Integer, TCPoint> snapshotDStream =
+                lines.mapToPair(new SnapshotMapper());
 
-        // find clusters - find clusters (DBSCAN) in each sub-partition
-        // format: <timestamp, {cluster}>
-        JavaPairDStream<Integer, DBSCANCluster> clusterDStream =
-                snapshotDStream.flatMapToPair(new DBSCANClusterMapper(distanceThreshold, densityThreshold));
-
-        clusterDStream.foreachRDD(new Function2<JavaPairRDD<Integer, DBSCANCluster>, Time, Void>() {
+        snapshotDStream.foreach(new Function2<JavaPairRDD<Integer,TCPoint>, Time, Void>() {
             @Override
-            public Void call(JavaPairRDD<Integer, DBSCANCluster> clusterRDD, Time time) throws Exception {
+            public Void call(JavaPairRDD<Integer, TCPoint> snapshotRDD, Time time) throws Exception {
+
+                // data partition
+                // K = <gridId, timestamp>
+                // V = {point}
+                FixedGridPartition fgp = new FixedGridPartition(0.1);
+                JavaPairRDD<String, Iterable<TCPoint>> partitionRDD = fgp.apply(snapshotRDD);
+
+                // find clusters - find clusters (DBSCAN) in each sub-partition
+                // K = timestamp
+                // V = gid, cluster
+                JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterRDD =
+                        GPQuery.getClusterRDD(partitionRDD, data);
+
+                // merge clusters - find clusters in different partition that have same objects
+                JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> mergedRDD =
+                        GPQuery.getMergedClusterRDD(clusterRDD, data);
 
                 // group clusters by timestamp to form a crowd, given each crowd
                 // an unique id
-                // format: <<timestamp, crowd>, crowdId>
-                JavaPairRDD<Tuple2<Integer, Crowd>, Long> crowdRDD =
-                        GPQuery.getCrowdRDDByRangePartitionJoin(clusterRDD, data);
+                // K = <gid, crowd>
+                // V = crowdId
+                JavaPairRDD<Tuple2<String, Crowd>, Long> crowdRDD =
+                        GPQuery.getCrowdRDD(mergedRDD, data).cache();
 
-                // find participator in a given crowd
-                // format: <crowdId, {participator}>
+                // find participator
+                // K = crowdId
+                // V = {participator}
                 JavaPairRDD<Long, Iterable<Integer>> participatorRDD =
                         GPQuery.getParticipatorRDD(crowdRDD, data);
 
@@ -110,7 +125,7 @@ public class StreamingGPFinder {
                         crowdRDD.flatMapToPair(new CrowdToObjectTimestampPairMapper());
 
                 // discover gatherings
-                // format: <crowdId, {(timestamp, {objectId})}>
+                // format: <crowdId, {<timestamp, {objectId}>}>
                 JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> gatheringRDD =
                         GPQuery.getGatheringRDD(crowdToObjectTimestampRDD, participatorRDD,
                                 data);
@@ -118,7 +133,8 @@ public class StreamingGPFinder {
                 if(outputDir.isEmpty())
                     gatheringRDD.take(1);
                 else
-                    gatheringRDD.saveAsTextFile(outputDir);
+                    gatheringRDD.saveAsHadoopFile(outputDir,
+                            String.class, String.class, TextOutputFormat.class);
 
                 return null;
             }
@@ -139,9 +155,6 @@ public class StreamingGPFinder {
             // output
             if (cmd.hasOption(SGPCliParser.OPT_STR_OUTPUTDIR)) {
                 outputDir = cmd.getOptionValue(SGPCliParser.OPT_STR_OUTPUTDIR);
-            } else {
-                System.err.println("Output directory not defined. Aborting...");
-                parser.help();
             }
 
             // debug

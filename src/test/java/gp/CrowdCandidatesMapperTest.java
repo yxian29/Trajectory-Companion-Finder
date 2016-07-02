@@ -21,7 +21,7 @@ public class CrowdCandidatesMapperTest extends TestCase {
 
     public void testGetCrowds() throws Exception {
 
-        List<Tuple2<Integer, DBSCANCluster>> input =
+        List<DBSCANCluster> input =
                 new ArrayList<>();
 
         // initialize DBSCAN
@@ -34,7 +34,7 @@ public class CrowdCandidatesMapperTest extends TestCase {
         points1.add(new TCPoint(3, 39.000234, 116.000459, 100));
         List<Cluster> c1 = dbscan.cluster(points1);
         for (Cluster c: c1) {
-            input.add(new Tuple2<>(4, new DBSCANCluster(1, c)));
+            input.add(new DBSCANCluster(1, c));
         }
 
         // cluster 2 at t = 110
@@ -44,7 +44,7 @@ public class CrowdCandidatesMapperTest extends TestCase {
         points2.add(new TCPoint(5, 39.000485, 116.000567, 110));
         List<Cluster> c2 = dbscan.cluster(points2);
         for (Cluster c: c2) {
-            input.add(new Tuple2<>(2, new DBSCANCluster(2, c)));
+            input.add(new DBSCANCluster(2, c));
         }
 
         // cluster 2 at t = 190
@@ -54,7 +54,7 @@ public class CrowdCandidatesMapperTest extends TestCase {
         points3.add(new TCPoint(5, 39.000285, 116.000267, 190));
         List<Cluster> c3 = dbscan.cluster(points3);
         for (Cluster c: c3) {
-            input.add(new Tuple2<>(3, new DBSCANCluster(3, c)));
+            input.add(new DBSCANCluster(3, c));
         }
 
         // cluster 2 at t = 210
@@ -64,14 +64,14 @@ public class CrowdCandidatesMapperTest extends TestCase {
         points4.add(new TCPoint(5, 39.000485, 116.000567, 210));
         List<Cluster> c4 = dbscan.cluster(points4);
         for (Cluster c: c4) {
-            input.add(new Tuple2<>(1, new DBSCANCluster(4, c)));
+            input.add(new DBSCANCluster(4, c));
         }
 
         CrowdCandidatesMapper instance = new CrowdCandidatesMapper(_timeInterval, _distanceThreshold);
 
-        Iterator<Tuple2<Integer, Crowd>> result = instance.getCrowds(1, input.iterator());
+        Iterable<Crowd> result = instance.getCrowds(input);
 
-        assert(IteratorUtils.toList(result).size() == 4);
+        assert(IteratorUtils.toList(result.iterator()).size() == 2);
     }
 
 }

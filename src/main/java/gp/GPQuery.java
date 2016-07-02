@@ -1,128 +1,104 @@
 package gp;
 
 import common.data.UserData;
-import common.utils.IntOrdering;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
 import common.data.TCPoint;
-import org.apache.spark.RangePartitioner;
+import org.apache.commons.collections.IteratorUtils;
+import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
-import scala.math.Ordering;
-import scala.math.Ordering$;
-import scala.reflect.ClassTag;
-import scala.reflect.ClassTag$;
+import java.util.List;
 
 import static gp.GPConstants.*;
 
 public class GPQuery {
 
-    public static JavaPairRDD<Integer, Iterable<TCPoint>> getSnapshotRDD(
+    public static JavaPairRDD<Integer, TCPoint> getSnapshotRDD(
             JavaRDD<String> lineRDD, UserData data)
     {
-        return lineRDD
-                .mapToPair(new SnapshotMapper())
-                .groupByKey();
+        return lineRDD.mapToPair(new SnapshotMapper());
     }
 
-    public static JavaPairRDD<Integer, DBSCANCluster> getClusterRDD
-            (JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD, UserData data)
+    public static JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> getClusterRDD
+            (JavaPairRDD<String, Iterable<TCPoint>> rdd, UserData data)
     {
         final double distanceThreshold = data.getValueDouble(OPT_STR_DISTTHRESHOLD);
         final int densityThreshold = data.getValueInt(OPT_STR_DENTHRESHOLD);
 
-        return snapshotRDD.flatMapToPair(new DBSCANClusterMapper(
+        return rdd.flatMapToPair(new DBSCANClusterMapper(
                 distanceThreshold, densityThreshold));
     }
 
-    public static JavaPairRDD<Tuple2<Integer, Crowd>, Long> getCrowdRDDByRangePartitionJoin
-            (JavaPairRDD<Integer, DBSCANCluster> clusterRDD, UserData data)
+    public static JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> getMergedClusterRDD
+            (JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterRDD, UserData data)
+    {
+        JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterWithBoRDD =
+                clusterRDD.filter(new Function<Tuple2<Integer, Tuple2<String, DBSCANCluster>>, Boolean>() {
+                    @Override
+                    public Boolean call(Tuple2<Integer, Tuple2<String, DBSCANCluster>> input) throws Exception {
+
+                        String[] gridId = input._2()._1().split("_");
+
+                        int gridIdX = Integer.parseInt(gridId[0]);
+                        int gridIdY = Integer.parseInt(gridId[1]);
+
+                        DBSCANCluster cluster = input._2()._2();
+                        for (Object objPoint : cluster._cluster.getPoints()) {
+                            TCPoint point = (TCPoint)objPoint;
+                            if(point.getX() % gridIdX == 0)
+                                return true;
+
+                            if(point.getY() % gridIdY == 0)
+                                return true;
+                        }
+                        return false;
+                    }
+                });
+
+        JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterWithoutBoRDD =
+                clusterRDD.subtract(clusterWithBoRDD);
+
+        //clusterWithBoRDD.join(clusterRDD)
+
+        return clusterWithoutBoRDD;
+    }
+
+    public static JavaPairRDD<Tuple2<String, Crowd>, Long> getCrowdRDD(
+            JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterRDD, UserData data)
     {
         final int numSubPartitions = data.getValueInt(OPT_STR_NUMPART);
         final int timeInterval = data.getValueInt(OPT_STR_TIMETHRESHOLD);
         final double distanceThreshold = data.getValueDouble(OPT_STR_DISTTHRESHOLD);
 
-        // temporal partition
-        Ordering<Integer> ordering = Ordering$.MODULE$.comparatorToOrdering(
-                new IntOrdering());
-        ClassTag<Integer> intTag = ClassTag$.MODULE$.apply(Integer.class);
-        RangePartitioner<Integer, DBSCANCluster> rangePartitioner =
-                new RangePartitioner<>(numSubPartitions, clusterRDD.rdd(), true, ordering, intTag);
-        clusterRDD = clusterRDD.repartitionAndSortWithinPartitions(rangePartitioner);
+        // K = gid
+        // V = cluster
+        JavaPairRDD<String, DBSCANCluster> gridClusterRDD =
+        clusterRDD.mapToPair(new PairFunction<Tuple2<Integer,Tuple2<String,DBSCANCluster>>,
+                String, DBSCANCluster>() {
+            @Override
+            public Tuple2<String, DBSCANCluster> call(Tuple2<Integer, Tuple2<String, DBSCANCluster>> input) throws Exception {
+                return input._2();
+            }
+        });
 
-        JavaRDD<Tuple2<Integer, Crowd>> crowdCandidateRDD =
-                clusterRDD.mapPartitionsWithIndex(new CrowdCandidatesMapper(
-                        timeInterval, distanceThreshold
-                ), true).filter(new Function<Tuple2<Integer, Crowd>, Boolean>() {
-                    @Override
-                    public Boolean call(Tuple2<Integer, Crowd> input) throws Exception {
-                        return input._2().size() > 1;
-                    }
-                });
+        // K = gid
+        // V = {cluster}
+        JavaPairRDD<String, Iterable<DBSCANCluster>> partitionedClusterRDD =
+        gridClusterRDD.repartitionAndSortWithinPartitions(new HashPartitioner(numSubPartitions))
+                .groupByKey();
 
-        JavaPairRDD<Integer, Crowd> crowdPairRDD =
-                crowdCandidateRDD.mapToPair(new PairFunction<Tuple2<Integer,Crowd>, Integer, Crowd>() {
-                    @Override
-                    public Tuple2<Integer, Crowd> call(Tuple2<Integer, Crowd> input) throws Exception {
-                        return new Tuple2<>(input._1(), input._2());
-                    }
-                });
+        JavaPairRDD<String, Crowd> crowdRDD =
+        partitionedClusterRDD
+                .flatMapValues(new CrowdCandidatesMapper(timeInterval, distanceThreshold));
 
-        JavaPairRDD<Integer, Crowd> crowdWithOffsetPairRDD =
-                crowdPairRDD.mapToPair(new PairFunction<Tuple2<Integer, Crowd>, Integer, Crowd>() {
-                    @Override
-                    public Tuple2<Integer, Crowd> call(Tuple2<Integer, Crowd> input) throws Exception {
-                        if(numSubPartitions == 1)
-                            return input;
+        JavaPairRDD<Tuple2<String, Crowd>, Long> indexCrowdRDD =
+                crowdRDD.zipWithIndex();
 
-                        if(numSubPartitions == 2)
-                        {
-                            if(input._1() == 1)
-                                return new Tuple2<Integer, Crowd>(2, input._2());
-                            else if(input._1() == 2)
-                                return new Tuple2<Integer, Crowd>(1, input._2());
-                        }
-
-                        return new Tuple2<Integer, Crowd>(input._1() - 1, input._2());
-                    }
-                }).filter(new Function<Tuple2<Integer, Crowd>, Boolean>() {
-                    @Override
-                    public Boolean call(Tuple2<Integer, Crowd> input) throws Exception {
-                        return input._1() > 0;
-                    }
-                });
-
-        JavaPairRDD<Tuple2<Integer, Crowd>, Long> mergedCrowdRDD =
-                crowdPairRDD.join(crowdWithOffsetPairRDD)
-                        .filter(new Function<Tuple2<Integer, Tuple2<Crowd, Crowd>>, Boolean>() {
-                            @Override
-                            public Boolean call(Tuple2<Integer, Tuple2<Crowd, Crowd>> input) throws Exception {
-                                Crowd c1 = input._2()._1();
-                                Crowd c2 = input._2()._2();
-                                DBSCANCluster cluster_tail = c1.last();
-                                DBSCANCluster cluster_head = c2.first();
-
-                                double dist = cluster_tail.centroid().distanceFrom(cluster_head.centroid());
-                                double time = cluster_head.getTimeStamp() - cluster_tail.getTimeStamp();
-
-                                return dist <= distanceThreshold && time <= timeInterval;
-                            }
-                        })
-                        .mapToPair(new PairFunction<Tuple2<Integer, Tuple2<Crowd, Crowd>>, Integer,
-                                Crowd>() {
-                            @Override
-                            public Tuple2<Integer, Crowd> call(Tuple2<Integer, Tuple2<Crowd, Crowd>> input) throws Exception {
-                                Crowd combined = new Crowd();
-                                combined.addAll(input._2()._1());
-                                combined.addAll(input._2()._2());
-                                return new Tuple2<Integer, Crowd>(input._1(), combined);
-                            }
-                        }).zipWithUniqueId();
-
-        return mergedCrowdRDD;
+        return indexCrowdRDD;
     }
 
 //    public static JavaPairRDD<Tuple2<Integer, Crowd>, Long> getCrowdRDDByCartesian
@@ -147,20 +123,37 @@ public class GPQuery {
 //    }
 
     public static JavaPairRDD<Long, Iterable<Integer>> getParticipatorRDD(
-            JavaPairRDD<Tuple2<Integer, Crowd>, Long> crowdRDD, UserData data
+            JavaPairRDD<Tuple2<String, Crowd>, Long> crowdRDD, UserData data
     )
     {
-        int clusterNumThreshold = data.getValueInt(OPT_STR_CLUSTERNUMTHRESHOLD);
+        final int clusterNumThreshold = data.getValueInt(OPT_STR_CLUSTERNUMTHRESHOLD);
 
-        return crowdRDD.flatMapToPair(new CrowdObjectToTimestampMapper())
-                        // <-: <(crowdId-objectId), {timestamp}>
-                        .groupByKey()
-                        // <-: <crowdId, {timestamp}>
-                        .mapToPair(new ParticipatorMapper())
-                        // <-: <crowdId, {participator}>
-                        .filter(new ParticipatorFilter(clusterNumThreshold))
-                        // <-: <crowdId, {participator}>
-                        .reduceByKey(new ParticipatorReducer());
+        JavaPairRDD<String, Iterable<Integer>> objectCountRDD =
+                crowdRDD.flatMapToPair(new CrowdObjectToTimestampMapper())
+                        // <-: <(crowdId-objectId), timestamp>
+                        .groupByKey();
+                        // <-: <crowdId-objectId, {timestamp}>
+
+        JavaPairRDD<String, Iterable<Integer>> filterRDD =
+                objectCountRDD.filter(new Function<Tuple2<String, Iterable<Integer>>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, Iterable<Integer>> input) throws Exception {
+                List<Integer> count = IteratorUtils.toList(input._2().iterator());
+                return count.size() >= clusterNumThreshold;
+            }
+        });
+
+        JavaPairRDD<Long, Integer> crowdToObjectRDD = filterRDD.mapToPair(new PairFunction<Tuple2<String,Iterable<Integer>>, Long, Integer>() {
+            @Override
+            public Tuple2<Long, Integer> call(Tuple2<String, Iterable<Integer>> input) throws Exception {
+                String[] split = input._1().split("-");
+                long crowdId = Long.parseLong(split[0]);
+                int objectId = Integer.parseInt(split[1]);
+                return new Tuple2<Long, Integer>(crowdId, objectId);
+            }
+        });
+
+        return crowdToObjectRDD.groupByKey();
     }
 
     public static JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> getGatheringRDD(

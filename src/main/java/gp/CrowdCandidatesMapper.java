@@ -2,16 +2,14 @@ package gp;
 
 import common.data.Crowd;
 import common.data.TCPoint;
-import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.Function;
 import common.data.DBSCANCluster;
 
 import java.util.*;
 
-import scala.Tuple2;
-
 public class CrowdCandidatesMapper implements
-        Function2<Integer, Iterator<Tuple2<Integer, DBSCANCluster>>,
-                        Iterator<Tuple2<Integer,Crowd>>> {
+        Function<Iterable<DBSCANCluster>,
+                Iterable<Crowd>> {
 
     private int _timeInterval;
     private double _distanceThreshold;
@@ -22,21 +20,14 @@ public class CrowdCandidatesMapper implements
         _distanceThreshold = distanceThreshold;
     }
 
-    /**
-     * Find crowd candidates in each temporal partitions
-     * @param partitionId  current partition id
-     * @param clusters     list of clusters within current partition
-     * @return             list of crowd candidates
-     */
     @Override
-    public Iterator<Tuple2<Integer, Crowd>> call(Integer partitionId, Iterator<Tuple2<Integer, DBSCANCluster>> clusters) throws Exception {
-        return getCrowds(partitionId, clusters);
+    public Iterable<Crowd> call(Iterable<DBSCANCluster> dbscanClusters) throws Exception {
+        return getCrowds(dbscanClusters);
     }
 
-    public Iterator<Tuple2<Integer, Crowd>> getCrowds(Integer partitionId,
-                                                      Iterator<Tuple2<Integer, DBSCANCluster>> clusters)
+    public Iterable<Crowd> getCrowds(Iterable<DBSCANCluster> clusters)
     {
-        Set<Tuple2<Integer, Crowd>> results = new HashSet<>(); // set of closed crowds
+        Set<Crowd> results = new HashSet<>(); // set of closed crowds
         Set<Crowd> candidates = new HashSet<>(); // set of current crowd candidates
 
         Map<Integer, Set<DBSCANCluster>> timeOrderMap = toTemporalOrderMap(clusters);
@@ -53,7 +44,7 @@ public class CrowdCandidatesMapper implements
 
                 r.addAll(cp);
                 if(cp.size() == 0) { // cr cannot be extended
-                    results.add(new Tuple2<>(partitionId, candidate));
+                    results.add(candidate);
                 }
                 else
                 {
@@ -82,24 +73,23 @@ public class CrowdCandidatesMapper implements
         }
 
         for (Crowd c: candidates) {
-            results.add(new Tuple2<>(partitionId, c));
+            results.add(c);
         }
 
-        return results.iterator();
+        return results;
     }
 
-    private Map<Integer, Set<DBSCANCluster>> toTemporalOrderMap(Iterator<Tuple2<Integer, DBSCANCluster>> clusters)
+    private Map<Integer, Set<DBSCANCluster>> toTemporalOrderMap(Iterable<DBSCANCluster> clusters)
     {
         Map<Integer, Set<DBSCANCluster>> result = new TreeMap<>();
-        while(clusters.hasNext())
+        for (DBSCANCluster cur: clusters)
         {
-            Tuple2<Integer, DBSCANCluster> cur = clusters.next();
-            if(result.containsKey(cur._1()))
-                result.get(cur._1()).add(cur._2());
+            if(result.containsKey(cur.getTimeStamp()))
+                result.get(cur.getTimeStamp()).add(cur);
             else {
                 Set<DBSCANCluster> cls = new HashSet<>();
-                cls.add(cur._2());
-                result.put(cur._1(), cls);
+                cls.add(cur);
+                result.put(cur.getTimeStamp(), cls);
             }
         }
         return result;
@@ -131,4 +121,7 @@ public class CrowdCandidatesMapper implements
 
         return Math.abs(p1.getTimeStamp() - p2.getTimeStamp()) <= _timeInterval;
     }
+
+
+
 }

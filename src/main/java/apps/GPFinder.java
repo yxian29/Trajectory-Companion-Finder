@@ -4,6 +4,7 @@ import common.data.TCPoint;
 import common.data.UserData;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
+import common.partition.FixedGridPartition;
 import gp.*;
 import common.cli.CliParserBase;
 import org.apache.commons.cli.CommandLine;
@@ -18,7 +19,7 @@ public class GPFinder {
 
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.0001;   // eps
+    private static double distanceThreshold = 0.001;   // eps
     private static int densityThreshold = 3;            // mu
     private static int timeInterval = 60;               // delta t
     private static int lifetimeThreshold = 70;          // kc
@@ -47,23 +48,37 @@ public class GPFinder {
         JavaRDD<String> file = ctx.textFile(inputFilePath);
 
         // find snapshot per timestamp and data partition
-        // format: <timestamp, {point}>
-        JavaPairRDD<Integer, Iterable<TCPoint>> snapshotRDD =
-                GPQuery.getSnapshotRDD(file, data);
+        // K = timestamp
+        // V = point
+        JavaPairRDD<Integer, TCPoint> snapshotRDD =
+                GPQuery.getSnapshotRDD(file, data).repartition(numSubPartitions);
+
+        // data partition
+        // K = <gridId, timestamp>
+        // V = {point}
+        FixedGridPartition fgp = new FixedGridPartition(0.1);
+        JavaPairRDD<String, Iterable<TCPoint>> partitionRDD = fgp.apply(snapshotRDD);
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
-        // format: <timestamp, {cluster}>
-        JavaPairRDD<Integer, DBSCANCluster> clusterRDD =
-                GPQuery.getClusterRDD(snapshotRDD, data);
+        // K = timestamp
+        // V = gid, cluster
+        JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> clusterRDD =
+                GPQuery.getClusterRDD(partitionRDD, data);
+
+        // merge clusters - find clusters in different partition that have same objects
+        JavaPairRDD<Integer, Tuple2<String, DBSCANCluster>> mergedRDD =
+                GPQuery.getMergedClusterRDD(clusterRDD, data);
 
         // group clusters by timestamp to form a crowd, given each crowd
         // an unique id
-        // format: <<timestamp, crowd>, crowdId>
-        JavaPairRDD<Tuple2<Integer, Crowd>, Long> crowdRDD =
-                GPQuery.getCrowdRDDByRangePartitionJoin(clusterRDD, data);
+        // K = <gid, crowd>
+        // V = crowdId
+        JavaPairRDD<Tuple2<String, Crowd>, Long> crowdRDD =
+                GPQuery.getCrowdRDD(mergedRDD, data).cache();
 
-//        // find participator in a given crowd
-//        // format: <crowdId, {participator}>
+        // find participator
+        // K = crowdId
+        // V = {participator}
         JavaPairRDD<Long, Iterable<Integer>> participatorRDD =
                 GPQuery.getParticipatorRDD(crowdRDD, data);
 
@@ -73,7 +88,7 @@ public class GPFinder {
                 crowdRDD.flatMapToPair(new CrowdToObjectTimestampPairMapper());
 
         // discover gatherings
-        // format: <crowdId, {(timestamp, {objectId})}>
+        // format: <crowdId, {<timestamp, {objectId}>}>
         JavaPairRDD<Long, Iterable<Tuple2<Integer, Iterable<Integer>>>> gatheringRDD =
                 GPQuery.getGatheringRDD(crowdToObjectTimestampRDD, participatorRDD,
                 data);
@@ -107,9 +122,6 @@ public class GPFinder {
             // output
             if (cmd.hasOption(GPConstants.OPT_STR_OUTPUTDIR)) {
                 outputDir = cmd.getOptionValue(GPConstants.OPT_STR_OUTPUTDIR);
-            } else {
-                System.err.println("Output directory not defined. Aborting...");
-                parser.help();
             }
 
             // debug

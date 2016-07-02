@@ -6,39 +6,22 @@ import java.awt.geom.Point2D;
 import java.io.Serializable;
 import java.util.Collection;
 
-public class TCPoint extends Point2D implements Serializable, Clusterable<TCPoint>{
+public class TCPoint extends Point2D.Double implements Serializable, Clusterable<TCPoint>{
 
     private int _objectId;
-    private double _x;
-    private double _y;
     private int _timestamp;
 
-    public TCPoint(int id, double x, double y, int timestamp)
+    public TCPoint(int id, double xval, double yval, int timestamp)
     {
         _objectId = id;
-        _x = x;
-        _y = y;
+        x = xval;
+        y = yval;
         _timestamp = timestamp;
     }
 
     public int getObjectId() { return _objectId; }
 
     public int getTimeStamp() { return _timestamp; }
-
-    @Override
-    public double getX() {
-        return _x;
-    }
-
-    @Override
-    public double getY() { return _y; }
-
-    @Override
-    public void setLocation(double x, double y) {
-        _x = x;
-        _y = y;
-    }
-
 
     public int compareTo(TCPoint comparePoint)
     {
@@ -47,7 +30,7 @@ public class TCPoint extends Point2D implements Serializable, Clusterable<TCPoin
 
     @Override
     public double distanceFrom(TCPoint p) {
-        return Math.sqrt(Math.pow(this._x - p._x, 2) + Math.pow(this._y - p._y, 2));
+        return Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
     }
 
     @Override

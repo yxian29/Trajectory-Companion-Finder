@@ -23,12 +23,16 @@ public class GatheringFilter implements
     public Boolean apply(Tuple2<Long, Tuple2<Iterable<Tuple2<Integer, Integer>>, Iterable<Integer>>> input)  {
         Iterable<Tuple2<Integer,Integer>> cluster = input._2()._1();
         List<Integer> partitcipators = IteratorUtils.toList(input._2()._2().iterator());
-        int count = 0;
+
         for (Tuple2<Integer, Integer> cid: cluster) {
+            int count = 0;
             if(partitcipators.contains(cid._1()))
                 count++;
+
+            if(count < _participatorNumThreshold)
+                return false;
         }
-        return count >= _participatorNumThreshold;
+        return true;
     }
 
 }

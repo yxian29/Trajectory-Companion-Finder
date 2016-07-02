@@ -13,29 +13,38 @@ import java.util.Collection;
 import java.util.List;
 
 public class DBSCANClusterMapper
-        implements PairFlatMapFunction<Tuple2<Integer, Iterable<TCPoint>>, Integer, DBSCANCluster> {
+        implements PairFlatMapFunction<Tuple2<String, Iterable<TCPoint>>,
+                   Integer, Tuple2<String, DBSCANCluster>> {
 
-        private double _distanceThreshold = 0.0;
-        private int _densityThreshold = 0;
+    private double _distanceThreshold = 0.0;
+    private int _densityThreshold = 0;
 
-        public DBSCANClusterMapper(double distanceThreshold, int densityThreshold)
-        {
-            _distanceThreshold = distanceThreshold;
-            _densityThreshold = densityThreshold;
+    public DBSCANClusterMapper(double distanceThreshold, int densityThreshold) {
+        _distanceThreshold = distanceThreshold;
+        _densityThreshold = densityThreshold;
+    }
+
+    @Override
+    public Iterable<Tuple2<Integer, Tuple2<String, DBSCANCluster>>>
+    call(Tuple2<String, Iterable<TCPoint>> input) throws Exception {
+
+        String[] split = input._1().split(",");
+        String gridId = split[0];
+        int timestamp = Integer.parseInt(split[1]);
+
+        List<Tuple2<Integer, Tuple2<String, DBSCANCluster>>> result = new ArrayList<>();
+
+        Collection<TCPoint> points = IteratorUtils.toList(input._2().iterator());
+        DBSCANClusterer dbscan = new DBSCANClusterer(_distanceThreshold, _densityThreshold);
+        List<Cluster> clusters = dbscan.cluster(points);
+        for (Cluster c : clusters) {
+
+            DBSCANCluster dbscanCluster = new DBSCANCluster(timestamp, c);
+            Tuple2<String, DBSCANCluster> t = new Tuple2(gridId, dbscanCluster);
+
+            result.add(new Tuple2(timestamp, t));
         }
 
-        @Override
-        public Iterable<Tuple2<Integer, DBSCANCluster>> call(Tuple2<Integer, Iterable<TCPoint>> input) throws Exception {
-
-            List<Tuple2<Integer, DBSCANCluster>> list = new ArrayList<>();
-            int timestamp = input._1();
-            Collection<TCPoint> points = IteratorUtils.toList(input._2().iterator());
-            DBSCANClusterer dbscan = new DBSCANClusterer(_distanceThreshold, _densityThreshold);
-            List<Cluster> clusters = dbscan.cluster(points);
-            for(Cluster c : clusters) {
-                list.add(new Tuple2<>(timestamp, new DBSCANCluster(timestamp, c)));
-            }
-
-            return list;
-        }
+        return result;
+    }
 }
