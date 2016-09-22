@@ -46,8 +46,8 @@ public class CoverageDensityReachableMapper
 
             for (TCLine line : lines) {
                 Line2D line2D = new Line2D.Double();
-                line2D.setLine(line.getPoint1().getX(), line.getPoint1().getY(),
-                        line.getPoint2().getX(), line.getPoint2().getY());
+                line2D.setLine(line.getP1().getX(), line.getP1().getY(),
+                        line.getP2().getX(), line.getP2().getY());
 
                 double dist = line2D.ptLineDist(pointTuple._2());
 
