@@ -12,4 +12,5 @@ public class GPConstants extends ConstantBase{
     public static final String OPT_STR_CLUSTERNUMTHRESHOLD = "kp";
     public static final String OPT_STR_PARTICIPATORTHRESHOLD = "mp";
     public static final String OPT_STR_NUMPART = "n";
+    public static final String OPT_STR_GRID_SIZE = "g";
 }

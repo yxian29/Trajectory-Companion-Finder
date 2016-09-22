@@ -13,9 +13,9 @@ public class TCPoint extends Point2D.Double implements Serializable, Clusterable
 
     public TCPoint(int id, double xval, double yval, int timestamp)
     {
+        super(xval,yval);
+
         _objectId = id;
-        x = xval;
-        y = yval;
         _timestamp = timestamp;
     }
 

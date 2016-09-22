@@ -1,5 +1,7 @@
 package apps;
 
+import common.cli.Config;
+import common.cli.PropertyFileParser;
 import common.data.TCPoint;
 import common.data.UserData;
 import common.data.Crowd;
@@ -25,10 +27,11 @@ public class GPFinder {
     private static int lifetimeThreshold = 70;          // kc
     private static int clusterNumThreshold = 3;         // kp
     private static int participatorNumThreshold = 2;    // mp
-    private static int numSubPartitions = 2;
+    private static int numSubPartitions = 2;            // n
+    private static double gridsize = 0.01;              // g
     private static boolean debugMode = false;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception{
 
         GPBatchCliParser parser = new GPBatchCliParser(args);
         parser.parse();
@@ -44,19 +47,29 @@ public class GPFinder {
         // force to local mode if it is debug
         if (debugMode) sparkConf.setMaster("local[*]");
 
+        PropertyFileParser propertyParser = new PropertyFileParser(args[0]);
+        propertyParser.parseFile();
+
+        // brenchmark settings
+        //**********************************************************
+        data.add(Config.BM_JOIN_METHOD, Integer.parseInt(propertyParser.getProperty(Config.BM_JOIN_METHOD)));
+        data.add(Config.BM_ENABLE_PARTITION, Boolean.parseBoolean(propertyParser.getProperty(Config.BM_ENABLE_PARTITION)));
+        //**********************************************************
+
         JavaSparkContext ctx = new JavaSparkContext(sparkConf);
         JavaRDD<String> file = ctx.textFile(inputFilePath);
 
         // find snapshot per timestamp and data partition
         // K = timestamp
         // V = point
-        JavaPairRDD<Integer, TCPoint> snapshotRDD =
-                GPQuery.getSnapshotRDD(file, data).repartition(numSubPartitions);
+        JavaPairRDD<Integer, TCPoint> snapshotRDD = data.getValueBool(Config.BM_ENABLE_PARTITION) ?
+                GPQuery.getSnapshotRDD(file, data).repartition(numSubPartitions) :
+                GPQuery.getSnapshotRDD(file, data);
 
         // data partition
         // K = <gridId, timestamp>
         // V = {point}
-        FixedGridPartition fgp = new FixedGridPartition(0.1);
+        FixedGridPartition fgp = new FixedGridPartition(gridsize);
         JavaPairRDD<String, Iterable<TCPoint>> partitionRDD = fgp.apply(snapshotRDD);
 
         // find clusters - find clusters (DBSCAN) in each sub-partition
@@ -200,6 +213,16 @@ public class GPFinder {
                         GPConstants.OPT_STR_NUMPART, numSubPartitions));
             }
 
+            // grid size
+            if (cmd.hasOption(GPConstants.OPT_STR_GRID_SIZE)) {
+                gridsize = Double.parseDouble(cmd.getOptionValue(GPConstants.OPT_STR_GRID_SIZE));
+                System.out.println(String.format(foundStr,
+                        GPConstants.OPT_STR_GRID_SIZE, gridsize));
+            } else {
+                System.out.println(String.format(notFoundStr,
+                        GPConstants.OPT_STR_GRID_SIZE, gridsize));
+            }
+
             // default user data
             data.add(GPConstants.OPT_STR_INPUTFILE, inputFilePath);
             data.add(GPConstants.OPT_STR_OUTPUTDIR, outputDir);
@@ -211,6 +234,7 @@ public class GPFinder {
             data.add(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold);
             data.add(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold);
             data.add(GPConstants.OPT_STR_NUMPART, numSubPartitions);
+            data.add(GPConstants.OPT_STR_GRID_SIZE, gridsize);
         }
         catch(NumberFormatException e) {
             System.err.println(String.format("Error parsing argument. Exception: %s", e.getMessage()));

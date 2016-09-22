@@ -1,5 +1,6 @@
 package gp;
 
+import common.cli.Config;
 import common.data.UserData;
 import common.data.Crowd;
 import common.data.DBSCANCluster;
@@ -73,6 +74,7 @@ public class GPQuery {
         final int numSubPartitions = data.getValueInt(OPT_STR_NUMPART);
         final int timeInterval = data.getValueInt(OPT_STR_TIMETHRESHOLD);
         final double distanceThreshold = data.getValueDouble(OPT_STR_DISTTHRESHOLD);
+        final boolean usePatition = data.getValueBool(Config.BM_ENABLE_PARTITION);
 
         // K = gid
         // V = cluster
@@ -88,8 +90,9 @@ public class GPQuery {
         // K = gid
         // V = {cluster}
         JavaPairRDD<String, Iterable<DBSCANCluster>> partitionedClusterRDD =
-        gridClusterRDD.repartitionAndSortWithinPartitions(new HashPartitioner(numSubPartitions))
-                .groupByKey();
+                usePatition ?
+        gridClusterRDD.repartitionAndSortWithinPartitions(new HashPartitioner(numSubPartitions)).groupByKey()
+                : gridClusterRDD.groupByKey();
 
         JavaPairRDD<String, Crowd> crowdRDD =
         partitionedClusterRDD

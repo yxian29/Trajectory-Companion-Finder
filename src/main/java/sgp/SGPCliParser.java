@@ -2,6 +2,8 @@ package sgp;
 
 import common.cli.CliParserBase;
 
+import static gp.GPConstants.OPT_STR_GRID_SIZE;
+
 public class SGPCliParser extends CliParserBase {
     public static final String OPT_STR_OUTPUTDIR = "o";
     public static final String OPT_STR_DISTTHRESHOLD = "e";
@@ -23,5 +25,6 @@ public class SGPCliParser extends CliParserBase {
         options.addOption(OPT_STR_CLUSTERNUMTHRESHOLD, true, "snapshot clusters number threshold");
         options.addOption(OPT_STR_PARTICIPATORTHRESHOLD, true, "participator number threshold");
         options.addOption(OPT_STR_NUMPART, true, "number of partitions");
+        options.addOption(OPT_STR_GRID_SIZE, true, "grid size");
     }
 }

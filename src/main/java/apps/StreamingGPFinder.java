@@ -39,6 +39,7 @@ public class StreamingGPFinder {
     private static int clusterNumThreshold = 3;         // kp
     private static int participatorNumThreshold = 2;    // mp
     private static int numSubPartitions = 2;
+    private static double gridsize = 0.1;              // g
     private static boolean debugMode = false;
 
     public static void main(String[] args) throws Exception {
@@ -77,7 +78,9 @@ public class StreamingGPFinder {
                         StringDecoder.class, StringDecoder.class,
                         kafkaParams, topics);
 
-        JavaPairDStream windowedInputRDD = inputDStream.window(Durations.seconds(batchInterval));
+        JavaPairDStream windowedInputRDD = inputDStream.window(
+                Durations.seconds(batchInterval * 3),
+                Durations.seconds(batchInterval * 2));
         JavaDStream<String> lines = windowedInputRDD.map(new InputDStreamValueMapper());
         lines.foreach(new BatchCountFunc());
 
@@ -93,7 +96,7 @@ public class StreamingGPFinder {
                 // data partition
                 // K = <gridId, timestamp>
                 // V = {point}
-                FixedGridPartition fgp = new FixedGridPartition(0.1);
+                FixedGridPartition fgp = new FixedGridPartition(gridsize);
                 JavaPairRDD<String, Iterable<TCPoint>> partitionRDD = fgp.apply(snapshotRDD);
 
                 // find clusters - find clusters (DBSCAN) in each sub-partition
@@ -233,6 +236,16 @@ public class StreamingGPFinder {
                         SGPCliParser.OPT_STR_NUMPART, numSubPartitions));
             }
 
+            // grid size
+            if (cmd.hasOption(GPConstants.OPT_STR_GRID_SIZE)) {
+                gridsize = Double.parseDouble(cmd.getOptionValue(GPConstants.OPT_STR_GRID_SIZE));
+                System.out.println(String.format(foundStr,
+                        GPConstants.OPT_STR_GRID_SIZE, gridsize));
+            } else {
+                System.out.println(String.format(notFoundStr,
+                        GPConstants.OPT_STR_GRID_SIZE, gridsize));
+            }
+
             // default user data
             data.add(GPConstants.OPT_STR_OUTPUTDIR, outputDir);
             data.add(GPBatchCliParser.OPT_STR_DEBUG, debugMode);
@@ -243,6 +256,7 @@ public class StreamingGPFinder {
             data.add(GPConstants.OPT_STR_CLUSTERNUMTHRESHOLD, clusterNumThreshold);
             data.add(GPConstants.OPT_STR_PARTICIPATORTHRESHOLD, participatorNumThreshold);
             data.add(GPConstants.OPT_STR_NUMPART, numSubPartitions);
+            data.add(GPConstants.OPT_STR_GRID_SIZE, gridsize);
         }
         catch(NumberFormatException e) {
             System.err.println(String.format("Error parsing argument. Exception: %s", e.getMessage()));
