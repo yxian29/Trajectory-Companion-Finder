@@ -41,7 +41,7 @@ public class TrajectorySlotMapper implements PairFunction<String, Long, TCPoint>
             return 0;
 
         String[] split = timestamp.split(":");
-        int sec = Integer.parseInt(split[0]) * 60 + Integer.parseInt(split[1]);
+        int sec = Integer.parseInt(split[0]) * 3600 + Integer.parseInt(split[1]) * 60;
         return sec;
     }
 }

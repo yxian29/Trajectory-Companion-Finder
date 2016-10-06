@@ -9,11 +9,20 @@ public class TCLine extends Line2D.Double implements Serializable {
     /* Reference
     http://code.metager.de/source/xref/lejos/classes/src_shared/lejos/geom/Line.java
      */
+    private TCPoint _p1;
+    private TCPoint _p2;
+
 
     public TCLine(TCPoint p1, TCPoint p2)
     {
         super(p1,p2);
+        _p1 = p1;
+        _p2 = p2;
     }
+
+    public TCPoint getTemporalPoint1() { return _p1; }
+
+    public TCPoint getTemporalPoint2() { return _p2; }
 
     /**
      * Calculate the point of intersection of two lines.

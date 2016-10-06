@@ -1,18 +1,17 @@
 package tc;
 
 import common.data.TCLine;
-import common.data.TCPoint;
 import org.apache.spark.api.java.function.Function;
 import scala.Tuple2;
 
 public class LineSegmentsFilter implements
         Function<Tuple2<String, Tuple2<Tuple2<Integer, TCLine>, Tuple2<Integer, TCLine>>>, Boolean>{
 
-    private static final int time_eps = 3;
+    private static int _timeThreshold;
 
-    public LineSegmentsFilter()
+    public LineSegmentsFilter(int timeThreshold)
     {
-
+        _timeThreshold = timeThreshold;
     }
 
     @Override
@@ -27,12 +26,13 @@ public class LineSegmentsFilter implements
         TCLine line1 = input._2._1._2;
         TCLine line2 = input._2._2._2;
 
+        if(objectId1 == objectId2)
+            return false;
 
-
-        if(Math.abs(((TCPoint)line1.getP1()).getTimeStamp()
-                - ((TCPoint)line2.getP2()).getTimeStamp()) > time_eps ||
-                Math.abs(((TCPoint)line2.getP2()).getTimeStamp()
-                        - ((TCPoint)line1.getP1()).getTimeStamp()) > time_eps)
+        if(Math.abs(line1.getTemporalPoint1().getTimeStamp()
+                - line2.getTemporalPoint2().getTimeStamp()) > _timeThreshold ||
+                Math.abs(line1.getTemporalPoint2().getTimeStamp()
+                        - line2.getTemporalPoint1().getTimeStamp()) > _timeThreshold)
         {
             return false;
         }

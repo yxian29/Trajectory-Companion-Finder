@@ -21,11 +21,12 @@ public class TCFinder_v1
 {
     private static String inputFilePath = "";
     private static String outputDir = "";
-    private static double distanceThreshold = 0.0001;   //eps
-    private static int densityThreshold = 3;            //mu
-    private static int timeInterval = 50;               //T
-    private static int durationThreshold = 3;           //k
-    private static int numSubPartitions = 2;            //n
+    private static double distanceThreshold = 0.001;    //eps
+    private static int densityThreshold = 1;            //mu
+    private static int timeInterval = 120;              //T(second)
+    private static int timestampDelta = 50;             //dt
+    private static int durationThreshold = 1;           //k
+    private static int numSubPartitions = 1;            //n
     private static int sizeThreshold = 2;               //l
     private static boolean debugMode = false;
 
@@ -74,7 +75,7 @@ public class TCFinder_v1
         // format: <(slotId, regionId), <<objectId, line>, <objectId, line>>
         JavaPairRDD<String, Tuple2<Tuple2<Integer, TCLine>, Tuple2<Integer, TCLine>>>
                 lineSegmentsPairRDD = segementsRDD.join(segementsRDD)
-                .filter(new LineSegmentsFilter());
+                .filter(new LineSegmentsFilter(timestampDelta));
 
         // get minimum distance for all line segment pair
         // format: <(slotId, regionId, objectId1, objectId2), minDist>
@@ -113,11 +114,12 @@ public class TCFinder_v1
         // obtain trajectory companion
         // format: <{objectId}, {slotId}>
         JavaPairRDD<String, Iterable<Integer>> companionRDD =
-                slotConnectionRDD
-                        .flatMapToPair(new CoverageDensityConnectionSubsetMapper(sizeThreshold))
-                        .mapToPair(new CoverageDensityConnectionMapper())
-                        .groupByKey()
-                        .filter(new TrajectoryCompanionFilter(durationThreshold));
+        slotConnectionRDD
+                .flatMapToPair(new CoverageDensityConnectionKMapper())
+                .flatMapToPair(new CoverageDensityConnectionSubsetKMapper())
+                .mapToPair(new CoverageDensityConnectionMapper())
+                .groupByKey()
+                .filter(new TrajectoryCompanionFilter(durationThreshold));
 
         if(debugMode)
             companionRDD.take(1);

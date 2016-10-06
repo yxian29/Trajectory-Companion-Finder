@@ -9,6 +9,7 @@ public class TCBatchCliParser extends CliParserBase {
     public static final String OPT_STR_DISTTHRESHOLD = "e";
     public static final String OPT_STR_DENTHRESHOLD = "u";
     public static final String OPT_STR_TIMEINTERVAL = "T";
+    public static final String OPT_STR_TIMESTAMP_DELTA = "dt";
     public static final String OPT_STR_LIFETIME = "k";
     public static final String OPT_STR_SIZETHRESHOLD = "l";
     public static final String OPT_STR_NUMPART = "n";
