@@ -2,6 +2,9 @@
 ---
 This is a prototyping for analyzing a subset of [GeoLife GPS Trajectories Dataset](https://research.microsoft.com/en-us/downloads/b16d359d-d164-469e-9fd4-daa38f2b2e13/). Each tuple contains the information of latitude, longtitude and timestamp of an object. The goal is to discover trajectory companions of objects at a given continous trajectory slots.
 
+# Thesis
+[Streaming Data Algorithm Design for Big Trajectory Data Analysis](https://spectrum.library.concordia.ca/982628/)
+
 ## Prerequisite
 * Setup Spark ([See instruction](http://spark.apache.org/docs/latest/spark-standalone.html))
 * Setup Hadoop ([See instruction](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html))
